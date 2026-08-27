@@ -312,6 +312,41 @@ Schema rules that matter:
 
 ---
 
+## 5.1 What measurement has already changed
+
+Two findings from `docs/measurements.md` that the remaining phases must carry.
+
+### 5.1.1 `reasoning.effort` is load-bearing, and its value is not yet settled
+
+`gpt-5.4-mini` is a reasoning model: reasoning tokens never appear in the response but are
+billed as output at $4.50/1M, and the model defaults to `medium`. Unset, a résumé costs about
+20× more for identical scores. `REASONING_EFFORT` is pinned to `low` in
+`app/ai/evaluator.py` and guarded by a test.
+
+Measurement also showed `low` resisting an injection that `medium` and `none` both fell for —
+the injected résumé scored identically to the clean one. **That is n=1** and is not treated as
+settled: one résumé, one payload, one run of a stochastic model. Phase 6 confirms or refutes it
+across the golden set. Until then the design assumes injection still inflates, and the defence
+rests on layers 1, 3 and 4 (§6), not on the model's own resistance.
+
+### 5.1.2 The batch path needs its own schema work
+
+`responses.parse(text_format=Model)` is not available on the Batch API. Batch requests carry a
+raw JSON Schema in `text.format`, and the schema Pydantic generates uses `$defs` and `$ref`,
+which `strict: true` does not accept. **Flattening that schema is Phase 7 work that was not in
+the original estimate**, and it is not optional: without `strict: true` the batch path loses
+layer 2 of the anti-injection design (§6) while the synchronous path keeps it — the worst
+possible split, since batch is what production actually uses.
+
+### 5.1.3 Batch turnaround is not fast, even when tiny
+
+A three-request batch stayed `in_progress` for over seven minutes in measurement. The window is
+24 h and not configurable, and small does not mean quick. This is why the panel says
+"evaluation in progress" and never a time (§4.1), and why the "evaluate now" button exists at
+all.
+
+---
+
 ## 6. Anti-injection: removing the attack's ceiling
 
 The attack: a candidate embeds in the PDF, white-on-white or at 1pt, *"Ignore previous
@@ -431,8 +466,8 @@ explicit authorization. The working cycle is in `CLAUDE.md`.
 | 3 | Application intake | `POST /openings/{slug}/apply`: form + PDF, MIME/size validation, consent, storage, state `received` | Non-PDF, >10 MB and missing consent are rejected; the file lands with an unguessable name |
 | 4 | Extraction & sanitization | PyMuPDF visible/total, hidden spans, OCR fallback, patterns, `IntegrityReport`. **No AI** | Fixture with white-on-white text → `visible_text` excludes it and the report locates it |
 | 5 | Evaluator | OpenAI client, versioned prompts, `Evaluation` with strict JSON, quote verification, weighted score. **Synchronous** | Reproducible evaluation on a fixture résumé; a fabricated quote triggers review; Python computes the score |
-| 6 | **Validation & calibration** | Script that runs the evaluator over 15–20 real résumés from a filled position, compared against a manual ranking. Report in `docs/` | Overlap with the manual top 10 measured and written down. **This is also the first thing that can be shown to a client** |
-| 7 | Batch, queue & scheduler | `job_queue`, `asyncio` worker, send every 6 h + trigger at 50 pending, hourly collect, sub-batch splitting by enqueued-token limit, retries, "evaluate now" button | 50 fixture résumés in one batch; hitting 50 pending sends off-slot; an oversized send splits itself; a partial failure loses nothing |
+| 6 | **Validation & calibration** | Script that runs the evaluator over 15–20 real résumés from a filled position against a manual ranking; confirm or refute the n=1 effort findings (§6.1); iterate the evaluator prompt against injection **with measurement**; read this account's real enqueued-token limit from the dashboard and size Phase 7's splitter to it | Overlap with the manual top 10 measured and written down; injection inflation measured across the golden set, not one sample; the chosen `reasoning.effort` justified by numbers. **This is also the first thing that can be shown to a client** |
+| 7 | Batch, queue & scheduler | `job_queue`, `asyncio` worker, send every 6 h + trigger at 50 pending, hourly collect, sub-batch splitting by enqueued-token limit, retries, "evaluate now" button, **and a flattened JSON Schema for the batch path (§6.2)** | 50 fixture résumés in one batch; hitting 50 pending sends off-slot; an oversized send splits itself; a partial failure loses nothing; **the batch path uses `strict: true`, verified against a request that would break the schema** |
 | 8 | HR panel | `web/` app: ranking, profile, résumé viewer, evidence clickable to offset, flags, per-candidate state, full-text search, shortlist/reject | Full walkthrough against the real API; a candidate in `extracted` already shows résumé and flags with no score |
 | 9 | Close & outreach | Opening close, email drafts, sending via Resend after approval | No email leaves without a recorded explicit approval |
 | 10 | Compliance & data lifecycle | `AuditLog`, CSV export, 6-month retention job, access/erasure endpoints | Retention deletes on schedule; erasure by email removes résumé, evaluation and PII while keeping anonymized audit records |
@@ -498,6 +533,7 @@ job/
 | Poor-quality scanned résumés | Garbage evaluations | OCR fallback; below a confidence threshold it is flagged "needs manual review" instead of evaluated badly. **OCR quality on bad Spanish scans is a known soft spot** |
 | Bias in screening | Legal and reputational | Prohibited attributes absent from schema and prompt; `AuditLog` records every human/model disagreement |
 | More sophisticated injection than anticipated | Client trust | The attack ceiling is a human-reviewed ranking with a red flag (§6) |
+| **The batch path silently drops `strict: true`** | Layer 2 lost exactly where production runs | Flattening the schema is an explicit Phase 7 deliverable with its own acceptance criterion (§5.1.2) |
 | A batch fails or is delayed | Candidates without a score | `job_queue` with retries and per-candidate state; the panel still shows résumé and flags; "evaluate now" is the escape hatch |
 | Exceeding the tier's enqueued-token limit | The whole send is rejected | Mandatory splitting in the scheduler (§3), tested in Phase 7 with an artificially low limit |
 | HR expects instant results | Unmet expectation | The panel says "evaluation in progress", never a specific time: the Batch window is 24 h and not configurable |
