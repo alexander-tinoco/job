@@ -1,0 +1,34 @@
+{
+  "model_id": "gpt-5.4-mini",
+  "prompt_version": "evaluator.v1",
+  "resume_text": "Charles Babbage\nGraphic Designer - Barcelona\n\nEXPERIENCE\nFreelance (2022-2026)\nBrand identity, print layout and social media assets for small shops.\n\nEDUCATION\nDiploma in Visual Communication",
+  "output": {
+    "criteria": [
+      {
+        "criterion_name": "Python",
+        "score": 0,
+        "justification": "No evidence of Python experience, ownership, or results in the résumé.",
+        "evidence": []
+      },
+      {
+        "criterion_name": "Postgres",
+        "score": 0,
+        "justification": "No evidence of relational modelling, query tuning, or data handling at scale.",
+        "evidence": []
+      }
+    ],
+    "relevant_years_experience": 0.0,
+    "mandatory_requirements_met": false,
+    "missing_requirements": [
+      "Python",
+      "Postgres"
+    ],
+    "risks": [],
+    "detected_skills": [
+      "brand identity",
+      "print layout",
+      "social media assets"
+    ],
+    "summary": "Résumé shows graphic design freelance work and a visual communication diploma, but no evidence for the backend requirements. Python and Postgres are both absent."
+  }
+}

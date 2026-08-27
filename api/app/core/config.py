@@ -1,4 +1,5 @@
 from functools import lru_cache
+from pathlib import Path
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -6,7 +7,12 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     """Application settings, read from the environment or a local .env file."""
 
-    model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+    # Resolved against the repository root, not the working directory: the API
+    # is normally run from api/, where a relative ".env" would silently miss.
+    model_config = SettingsConfigDict(
+        env_file=Path(__file__).resolve().parents[3] / ".env",
+        extra="ignore",
+    )
 
     database_url: str = "postgresql+psycopg://screening:screening@localhost:5432/screening"
     openai_api_key: str = ""

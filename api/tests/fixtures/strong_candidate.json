@@ -1,0 +1,39 @@
+{
+  "model_id": "gpt-5.4-mini",
+  "prompt_version": "evaluator.v1",
+  "resume_text": "Ada Lovelace\nSenior Backend Engineer - Madrid\n\nEXPERIENCE\nAnalytical Engines (2020-2026) - Backend Engineer\nOwned the billing service in Python and PostgreSQL. Cut checkout\nerrors by 40% after redesigning the retry pipeline.\n\nDifference Engine Co (2018-2020) - Software Engineer\nBuilt internal tooling in Python. Migrated a monolith to services.\n\nEDUCATION\nBSc Mathematics, University of London",
+  "output": {
+    "criteria": [
+      {
+        "criterion_name": "Python",
+        "score": 4,
+        "justification": "Owned a Python billing service and built internal tooling in Python, with a measurable outcome from the billing work.",
+        "evidence": [
+          "Owned the billing service in Python and PostgreSQL. Cut checkout",
+          "Built internal tooling in Python. Migrated a monolith to services."
+        ]
+      },
+      {
+        "criterion_name": "Postgres",
+        "score": 3,
+        "justification": "Shows direct PostgreSQL ownership on a billing service, but no detail on modelling, tuning, or scale work.",
+        "evidence": [
+          "Owned the billing service in Python and PostgreSQL. Cut checkout"
+        ]
+      }
+    ],
+    "relevant_years_experience": 8.0,
+    "mandatory_requirements_met": true,
+    "missing_requirements": [],
+    "risks": [],
+    "detected_skills": [
+      "Python",
+      "PostgreSQL",
+      "billing services",
+      "retry pipelines",
+      "internal tooling",
+      "monolith migration"
+    ],
+    "summary": "Strong backend candidate with solid Python ownership and direct PostgreSQL experience. The résumé shows measurable impact in billing and service migration work, fitting a small Python backend team well."
+  }
+}
