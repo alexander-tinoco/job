@@ -1,211 +1,216 @@
-# CLAUDE.md — Reglas de trabajo
+# CLAUDE.md — Working rules
 
-## Proyecto
+## Language
 
-MVP de criba de candidatos asistida por IA para pymes. El plan completo está en
-`docs/PLAN-MVP.md` — **léelo antes de proponer nada**. Es la fuente de verdad del alcance:
-si algo no está ahí, no se implementa sin haberlo añadido al plan primero.
+**Everything in this project is written in English**: code, comments, commit messages,
+documentation, identifiers, database columns, API fields, UI copy and prompts. No exceptions.
+Conversation with me can be in Spanish; the repository cannot.
 
-Stack: Python 3.12 · FastAPI · SQLAlchemy 2.0 · PostgreSQL 16 (sin extensiones) · React/Vite en `web/`.
-IA: OpenAI `gpt-5.4-mini` vía Batch API. **Sin RAG, sin embeddings, sin pgvector** — el
-contexto de evaluación va en el prompt (§4 del plan).
+## Project
+
+MVP for AI-assisted candidate screening, aimed at small businesses. The full plan is in
+`docs/PLAN-MVP.md` — **read it before proposing anything**. It is the source of truth for
+scope: if something is not in there, it does not get built until the plan says so.
+
+Stack: Python 3.12 · FastAPI · SQLAlchemy 2.0 · PostgreSQL 16 (no extensions) · React/Vite in
+`web/`. AI: OpenAI `gpt-5.4-mini` via the Batch API. **No RAG, no embeddings, no pgvector** —
+evaluation context lives in the prompt (§4 of the plan).
 
 ---
 
-## Marco de trabajo: fases con roles secuenciales
+## Working framework: phases with sequential roles
 
-Trabajamos en **una sola terminal**. No se lanzan subagentes. Los roles los interpreto yo,
-por turnos, dentro de la misma sesión. Cada fase recorre este ciclo completo y termina en un
-*commit* y un *push*.
+We work in **a single terminal**. No subagents are spawned. I play the roles myself, in turn,
+within the same session. Every phase runs this full cycle and ends in a commit and a push.
 
 ```
-  1. ARQUITECTO   → propone el diseño de la fase
-                    ╠═══ PUERTA HUMANA 1 ═══╣  ← tú autorizas
-  2. DESARROLLADOR → implementa exactamente lo aprobado
-  3. TESTER        → escribe y ejecuta las pruebas
-  4. REVISOR       → revisa el diff completo
-                    ╠═══ PUERTA HUMANA 2 ═══╣  ← tú apruebas
-  5. INTEGRADOR    → commit convencional + push
+  1. ARCHITECT   → proposes the phase design
+                   ╠═══ HUMAN GATE 1 ═══╣  ← you authorize
+  2. DEVELOPER   → implements exactly what was approved
+  3. TESTER      → writes and runs the tests
+  4. REVIEWER    → reviews the full diff
+                   ╠═══ HUMAN GATE 2 ═══╣  ← you approve
+  5. INTEGRATOR  → conventional commit + push
 ```
 
-### 1. Arquitecto
-Antes de tocar un solo fichero:
-- Qué entrega la fase, en una frase.
-- Ficheros que se crean o se modifican, con una línea por fichero.
-- Contratos: firmas de funciones públicas, esquemas Pydantic, endpoints, tablas.
-- Decisiones no obvias y por qué (si es estructural, va a `docs/decisiones/` como ADR corto).
-- Criterio de aceptación: qué prueba demuestra que la fase está hecha.
-- Lo que esta fase **no** hace, si hay riesgo de confusión.
+### 1. Architect
+Before touching a single file:
+- What the phase delivers, in one sentence.
+- Files created or modified, one line each.
+- Contracts: public function signatures, Pydantic schemas, endpoints, tables.
+- Non-obvious decisions and why (if structural, it becomes a short ADR in `docs/decisions/`).
+- Acceptance criteria: what test proves the phase is done.
+- What this phase explicitly does **not** do, when there is room for confusion.
 
-**No escribe código.** Termina pidiendo autorización y se detiene.
+**Writes no code.** Ends by requesting authorization and stops.
 
-### Puerta humana 1
-Espera respuesta. No la interpretes: "vale", "dale", "adelante" es un sí. Silencio no lo es.
-Si pides algo distinto a lo propuesto, el arquitecto revisa y vuelve a pedir autorización.
+### Human gate 1
+Wait for an answer. Do not interpret one: "ok", "go ahead", "dale" is a yes. Silence is not.
+If you ask for something different from what was proposed, the architect revises and asks again.
 
-### 2. Desarrollador
-Implementa **lo aprobado, ni más ni menos**. Si a mitad aparece algo que el arquitecto no
-previó:
-- Si es un detalle de implementación → resuélvelo y menciónalo al terminar.
-- Si cambia un contrato, añade una dependencia o toca un fichero que no estaba en la lista →
-  **para y pregunta**. No lo metas de tapadillo.
+### 2. Developer
+Implements **what was approved, no more and no less**. If something the architect did not
+foresee comes up mid-way:
+- An implementation detail → resolve it and mention it when done.
+- A contract change, a new dependency, or a file not on the list → **stop and ask**. Do not
+  slip it in.
 
-Prohibido en esta fase: refactorizar código ajeno a la fase, "de paso" arreglar otra cosa,
-añadir *features* que no se pidieron, crear ficheros de documentación no acordados.
+Forbidden in this role: refactoring code unrelated to the phase, fixing something else "while
+we're here", adding unrequested features, creating documentation nobody agreed on.
 
 ### 3. Tester
-- Pruebas del criterio de aceptación de la fase, y de los casos borde que importen.
-- Ejecuta `pytest`, `ruff check`, `mypy` y **reporta la salida real**. Si algo falla, se dice
-  que falla y se arregla; no se maquilla ni se omite.
-- Ninguna prueba llama a la API de OpenAI de verdad. Se usan *fixtures* grabadas en
-  `api/tests/fixtures/`.
+- Tests for the phase's acceptance criteria, plus edge cases that matter.
+- Run `pytest`, `ruff check` and `mypy`, and **report the real output**. If something fails, say
+  it fails and fix it; do not dress it up or leave it out.
+- No test calls the OpenAI API for real. Use recorded fixtures in `api/tests/fixtures/`.
 
-### 4. Revisor
-Repasa el diff completo con esta lista:
-- ¿Hace exactamente lo aprobado en la puerta 1?
-- ¿Hay contenido de candidato entrando por el `system` o por instrucciones? (ver §Reglas de IA)
-- ¿Secretos, claves, `.env`, PII en logs o en el diff?
-- ¿Complejidad que no hace falta? ¿Abstracción prematura?
-- ¿Manejo de errores en los bordes: entrada del usuario, PDF corrupto, API caída, BD caída?
-- ¿Las pruebas prueban comportamiento o solo cubren líneas?
+### 4. Reviewer
+Go through the full diff against this checklist:
+- Does it do exactly what gate 1 approved?
+- Is any candidate content entering via `system` or via instructions? (see §AI rules)
+- Secrets, keys, `.env`, or PII in logs or in the diff?
+- Complexity that isn't needed? Premature abstraction?
+- Error handling at the edges: user input, corrupt PDF, API down, DB down?
+- Do the tests check behaviour, or just cover lines?
 
-Los hallazgos se arreglan antes de la puerta 2.
+Findings get fixed before gate 2.
 
-### Puerta humana 2
-Presenta un resumen del diff (`git diff --stat` + qué cambió y por qué) y espera aprobación.
+### Human gate 2
+Present a diff summary (`git diff --stat` plus what changed and why) and wait for approval.
 
-### 5. Integrador
-`git add` de lo de la fase, *commit* convencional, `git push`. **Un commit por fase.**
-Después, propone la siguiente fase y vuelve al rol de arquitecto — sin empezarla.
+### 5. Integrator
+`git add` the phase's work, conventional commit, `git push`. **One commit per phase.**
+Then propose the next phase and return to the architect role — without starting it.
 
 ---
 
-## Reglas de las puertas
+## Gate rules
 
-- **Nunca** se salta una puerta, ni aunque la fase parezca trivial.
-- **Nunca** se hace `commit` ni `push` sin la aprobación de la puerta 2.
-- Si te pido "sigue" a secas, eso avanza **un** rol, no la fase entera.
-- Si una fase se tuerce y hay que descartar el trabajo, se dice claramente y se propone
-  volver al arquitecto. No se acumula deuda para "arreglarlo después".
+- **Never** skip a gate, however trivial the phase looks.
+- **Never** commit or push without gate 2 approval.
+- If I just say "continue", that advances **one** role, not the whole phase.
+- If a phase goes wrong and the work should be discarded, say so plainly and propose returning
+  to the architect. Do not pile up debt to "fix later".
 
-## Tamaño de fase
+## Phase size
 
-Una capacidad vertical completa que funcione de punta a punta. Como referencia:
-**3–8 ficheros tocados, 150–400 líneas netas.**
+One complete vertical capability that works end to end. As a guide:
+**3–8 files touched, 150–400 net lines.**
 
-- Si el arquitecto estima que se pasa → **parte la fase y avísalo antes de la puerta 1**.
-- Si se queda muy por debajo (un fichero, 30 líneas) → júntala con la siguiente.
+- If the architect estimates it will overshoot → **split the phase and say so before gate 1**.
+- If it comes in far under (one file, 30 lines) → merge it with the next one.
 
-El objetivo es progreso tranquilo y visible: cada *push* debe dejar el proyecto en un estado
-que se pueda enseñar y del que se pueda hablar.
+The goal is calm, visible progress: every push should leave the project in a state you can show
+and talk about.
 
 ---
 
 ## Commits
 
-Formato convencional, obligado por commitlint en el *hook* `commit-msg`:
+Conventional format, enforced by commitlint in the `commit-msg` hook:
 
 ```
-<tipo>(<ámbito>): <descripción en imperativo, minúscula, sin punto final>
-
-<cuerpo opcional: por qué, no qué>
+<type>(<scope>): <imperative description, lowercase, no trailing period>
 ```
 
-**Tipos:** `feat` · `fix` · `refactor` · `test` · `docs` · `chore` · `build` · `ci` · `perf` · `style`
+**Title only.** No body, no footers, no `Co-Authored-By`, no session links. If a change needs
+explanation, it belongs in the code or in `docs/`, not in the commit message.
 
-**Ámbitos del proyecto:** `api` · `db` · `ingest` · `ai` · `web` · `auth` · `infra` · `docs`
+**Authorship: there is never a co-author other than you.** You are the commit author, full stop.
 
-Ejemplos:
+**Types:** `feat` · `fix` · `refactor` · `test` · `docs` · `chore` · `build` · `ci` · `perf` · `style`
+
+**Scopes:** `api` · `db` · `ingest` · `ai` · `web` · `auth` · `infra` · `docs`
+
+Examples:
 ```
-feat(ingest): detectar texto oculto en PDFs con PyMuPDF
-feat(ai): evaluar candidatos con salida estructurada y evidencia citada
-feat(ai): procesar la convocatoria por lotes con la Batch API
-chore(infra): añadir husky y commitlint
+feat(ingest): detect hidden text in pdfs with pymupdf
+feat(ai): evaluate candidates with structured output and quoted evidence
+feat(ai): process openings in batches via the batch api
+chore(infra): add husky and commitlint
 ```
 
-**Autoría: nunca hay un co-autor que no seas tú.** Ningún commit lleva `Co-Authored-By` de
-Claude ni de ninguna herramienta. El autor del commit eres tú y punto.
-
-### Hooks (Fase 0)
-| Hook | Qué corre |
+### Hooks (Phase 0)
+| Hook | What runs |
 |---|---|
-| `pre-commit` | `ruff check --fix`, `ruff format` y `mypy` sobre lo *staged*; `pytest -q` si tocó `api/` |
+| `pre-commit` | `ruff check --fix`, `ruff format` and `mypy` on staged files; `pytest -q` if `api/` was touched |
 | `commit-msg` | `commitlint` |
 
-Nunca `--no-verify`. Si un hook molesta, se arregla el hook, no se esquiva.
+Never `--no-verify`. If a hook gets in the way, fix the hook — don't bypass it.
 
 ---
 
-## Reglas de código
+## Code rules
 
-- Python 3.12. Tipos en toda firma pública. `mypy --strict` en `app/ai/` y `app/ingest/`.
-- Nada de `Any` en fronteras (endpoints, esquemas, retornos públicos).
-- `ruff` para lint y formato. Sin configuraciones personales: lo que diga `pyproject.toml`.
-- Pydantic v2 para todo lo que cruce una frontera (HTTP o API de OpenAI).
-- SQLAlchemy 2.0 estilo moderno (`Mapped[...]`, `mapped_column`). Nada del estilo 1.x.
-- Migraciones **siempre** con Alembic. Nunca un `CREATE TABLE` a mano.
-- Comentarios: solo para el *por qué* no obvio. Nada de comentarios que repiten el código.
-- Escribe código que se parezca al que ya hay. Si el fichero de al lado hace algo de una
-  manera, hazlo igual aunque prefieras otra.
-
----
-
-## Reglas de IA (no negociables)
-
-El principio que las ordena a todas: **cero IA hasta el último paso.** El pipeline es
-determinista salvo una única llamada por candidato. Si te descubres proponiendo una segunda
-llamada, para y justifícala en la puerta 1.
-
-1. **Una sola llamada de IA por candidato.** No hay perfilado, ni clasificador de inyección,
-   ni orquestador, ni enrutado por modelo. Todo lo que necesita el producto sale del esquema
-   de esa llamada.
-2. **Modelo: `gpt-5.4-mini`.** No lo bajes a `nano` por coste — la resistencia a inyección
-   escala con la capacidad y el ahorro es de ~$1,4 por convocatoria. No lo subas sin que yo
-   lo decida.
-3. **Salida estructurada estricta siempre**: JSON Schema con `strict: true`. Ninguna decisión
-   del producto sale de texto libre parseado a mano.
-4. **El contenido del candidato nunca va en el mensaje `developer`/`system`** ni interpolado
-   en la plantilla de instrucciones. Va en un mensaje `user` aparte.
-5. **El modelo nunca emite el número que ordena el ranking.** Puntúa criterios de 0 a 5; el
-   score global lo calcula Python con los pesos de la rúbrica.
-6. **Toda cita de `evidencia` se verifica** contra el texto saneado antes de mostrarse. Si no
-   aparece literal, la evaluación se marca para revisión humana.
-7. **Un candidato por contexto.** Jamás dos CVs en la misma llamada.
-8. **Prompts en ficheros** `app/ai/prompts/*.md`, versionados. Nunca literales largos en el
-   código. Toda `Evaluation` guarda `prompt_version` y `model_id`.
-9. **Batch API** para el procesamiento de una convocatoria. La vía síncrona existe solo para
-   desarrollo y pruebas.
-10. **Extraer, sanear, trocear y puntuar es Python.** Si propones resolver con IA algo que un
-    algoritmo resuelve, es un error de diseño, no un atajo.
-11. **Nada de RAG, embeddings ni búsqueda vectorial.** El contexto de empresa y la rúbrica son
-    texto que RRHH escribe al crear la oferta y que va en el prompt. La búsqueda del panel es
-    `tsvector` de Postgres. Si propones recuperación vectorial, es ampliación de alcance.
-12. Ninguna prueba automática llama a la API real: *fixtures* grabadas en `api/tests/fixtures/`.
-
-Antes de escribir código que llame a la API de OpenAI, consulta su documentación vigente. No
-escribas llamadas de memoria: los nombres de modelo y los parámetros cambian.
-
-## Seguridad y datos personales
-
-- `.env` nunca se commitea. `.env.example` sí, con valores de mentira.
-- Nada de PII (nombres, emails, teléfonos, texto de CV) en logs. Se registra el `application_id`.
-- Los PDFs subidos se guardan con nombre no adivinable, fuera de cualquier ruta servida estáticamente.
-- El `CandidateProfile` no modela edad, género, nacionalidad, foto ni estado civil, y el
-  prompt del evaluador prohíbe inferirlos. Ver §9 del plan.
-- Toda decisión humana queda en `AuditLog` con motivo.
+- Python 3.12. Types on every public signature. `mypy --strict` in `app/ai/` and `app/ingest/`.
+- No `Any` at boundaries (endpoints, schemas, public return types).
+- `ruff` for linting and formatting. No personal config: whatever `pyproject.toml` says.
+- Pydantic v2 for anything crossing a boundary (HTTP or the OpenAI API).
+- SQLAlchemy 2.0 modern style (`Mapped[...]`, `mapped_column`). No 1.x idioms.
+- Migrations **always** through Alembic. Never a hand-written `CREATE TABLE`.
+- Comments: only for non-obvious *why*. No comments restating the code.
+- Write code that looks like the code already there. If the neighbouring file does something a
+  certain way, do it the same way even if you'd prefer another.
 
 ---
 
-## Qué NO hacer sin preguntarme
+## AI rules (non-negotiable)
 
-- Instalar una dependencia que el arquitecto no listó en la puerta 1.
-- Cambiar de modelo o de proveedor.
-- Añadir una segunda llamada de IA al pipeline.
-- Introducir embeddings, pgvector o cualquier forma de recuperación vectorial.
-- Añadir una dependencia de infraestructura nueva (Redis, Celery, una cola externa). La cola
-  vive en Postgres y es lo que mantiene el despliegue en ~$10/mes.
-- Tocar migraciones ya aplicadas.
-- Hacer `git push --force`, reescribir historia, o commitear en una fase no aprobada.
-- Ampliar el alcance del MVP con algo de la lista "Fuera de alcance" del plan, aunque sean
-  diez minutos de trabajo.
-- Crear documentación, changelogs o READMEs que no se hayan acordado.
+The principle behind all of them: **no AI until the last step.** The pipeline is deterministic
+except for one call per candidate. If you find yourself proposing another per-candidate call,
+stop and justify it at gate 1.
+
+1. **One AI call per candidate.** No profiling pass, no injection classifier, no orchestrator,
+   no model routing. Everything the product needs comes out of that call's schema.
+   *One documented exception:* drafting a rubric from a job description, which runs **once per
+   opening, not per candidate** (§4.2 of the plan).
+2. **Model: `gpt-5.4-mini`.** Do not drop to `nano` for cost — injection resistance scales with
+   capability and the saving is ~$1 per opening. Do not move up without my decision.
+3. **Always strict structured output**: JSON Schema with `strict: true`. No product decision
+   comes from free text parsed by hand.
+4. **Candidate content never goes in the `developer`/`system` message**, nor interpolated into
+   the instruction template. It goes in its own `user` message.
+5. **The model never emits the number that orders the ranking.** It scores criteria 0–5; Python
+   computes the overall score from the rubric weights.
+6. **Every `evidence` quote is verified** against the sanitized text before being shown. If it
+   is not there verbatim, the evaluation is flagged for human review.
+7. **One candidate per context.** Never two résumés in the same call.
+8. **Prompts live in files** under `app/ai/prompts/*.md`, versioned. Never long literals in the
+   code. Every `Evaluation` stores `prompt_version` and `model_id`.
+9. **Batch API** for processing an opening. The synchronous path exists only for development and
+   the "evaluate now" button.
+10. **Extracting, sanitizing, splitting and scoring is Python.** Proposing AI for something an
+    algorithm solves is a design error, not a shortcut.
+11. **No RAG, embeddings or vector search.** Company context and the rubric are text HR writes
+    when creating the opening, and they go in the prompt. Panel search is Postgres `tsvector`.
+    Proposing vector retrieval is scope creep.
+12. No automated test calls the real API: recorded fixtures in `api/tests/fixtures/`.
+
+Before writing code that calls the OpenAI API, check its current documentation. Do not write
+calls from memory: model names and parameters change.
+
+---
+
+## Security and personal data
+
+- `.env` is never committed. `.env.example` is, with fake values.
+- No PII (names, emails, phone numbers, résumé text) in logs. Log the `application_id`.
+- Uploaded résumés are stored under unguessable names, outside any statically served path.
+- The output schema does not model age, gender, nationality, photo or marital status, and the
+  evaluator prompt forbids inferring them. See §8 of the plan.
+- Every human decision is recorded in `AuditLog` with its reason.
+
+---
+
+## What NOT to do without asking me
+
+- Install a dependency the architect did not list at gate 1.
+- Change model or provider.
+- Add a second per-candidate AI call to the pipeline.
+- Introduce embeddings, pgvector or any form of vector retrieval.
+- Add a new infrastructure dependency (Redis, Celery, an external queue). The queue lives in
+  Postgres and that is what keeps the deployment at ~$10/month.
+- Touch migrations that have already been applied.
+- `git push --force`, rewrite history, or commit during an unapproved phase.
+- Extend MVP scope with anything from the plan's "Out" list, even if it's ten minutes of work.
+- Create documentation, changelogs or READMEs nobody agreed on.
