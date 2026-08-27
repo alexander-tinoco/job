@@ -1,0 +1,1278 @@
+{
+  "gpt-5.6-luna": {
+    "vargas": [
+      {
+        "score": 95.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 4,
+          "Business impact": 5
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000933,
+        "tokens": {
+          "input": 1285,
+          "output": 563
+        }
+      },
+      {
+        "score": 95.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 4,
+          "Business impact": 5
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000903,
+        "tokens": {
+          "input": 1285,
+          "output": 538
+        }
+      },
+      {
+        "score": 90.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 5
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000979,
+        "tokens": {
+          "input": 1285,
+          "output": 602
+        }
+      }
+    ],
+    "chen": [
+      {
+        "score": 75.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 4,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.001079,
+        "tokens": {
+          "input": 1243,
+          "output": 692
+        }
+      },
+      {
+        "score": 76.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 3
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.001027,
+        "tokens": {
+          "input": 1243,
+          "output": 649
+        }
+      },
+      {
+        "score": 80.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "SQL and modelling depth beyond advanced SQL, dbt basics, and the metrics layer is not extensively documented.",
+          "BI experience is centered on Tableau and Mode rather than the stated Looker environment."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.001104,
+        "tokens": {
+          "input": 1243,
+          "output": 713
+        }
+      }
+    ],
+    "raman": [
+      {
+        "score": 65.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 5,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000928,
+        "tokens": {
+          "input": 1214,
+          "output": 571
+        }
+      },
+      {
+        "score": 65.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 5,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000953,
+        "tokens": {
+          "input": 1214,
+          "output": 592
+        }
+      },
+      {
+        "score": 65.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 5,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.00095,
+        "tokens": {
+          "input": 1214,
+          "output": 589
+        }
+      }
+    ],
+    "ibarra": [
+      {
+        "score": 48.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 2,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000917,
+        "tokens": {
+          "input": 1182,
+          "output": 567
+        }
+      },
+      {
+        "score": 53.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000964,
+        "tokens": {
+          "input": 1182,
+          "output": 606
+        }
+      },
+      {
+        "score": 53.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000886,
+        "tokens": {
+          "input": 1182,
+          "output": 541
+        }
+      }
+    ],
+    "kowalski": [
+      {
+        "score": 31.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 4,
+          "BI and visualisation": 1,
+          "Business impact": 0
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000831,
+        "tokens": {
+          "input": 1197,
+          "output": 493
+        }
+      },
+      {
+        "score": 35.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 4,
+          "BI and visualisation": 1,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "The résumé describes SQL as limited to extracting data and identifies tooling as narrow; fit with the company’s Snowflake, dbt, and Looker environment is unsubstantiated."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.000928,
+        "tokens": {
+          "input": 1197,
+          "output": 574
+        }
+      },
+      {
+        "score": 40.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 1,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000873,
+        "tokens": {
+          "input": 1197,
+          "output": 528
+        }
+      }
+    ],
+    "restrepo": [
+      {
+        "score": 46.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.00086,
+        "tokens": {
+          "input": 1203,
+          "output": 516
+        }
+      },
+      {
+        "score": 38.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000818,
+        "tokens": {
+          "input": 1203,
+          "output": 481
+        }
+      },
+      {
+        "score": 42.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 3
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000854,
+        "tokens": {
+          "input": 1203,
+          "output": 511
+        }
+      }
+    ],
+    "tanaka": [
+      {
+        "score": 21.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 1,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000794,
+        "tokens": {
+          "input": 1167,
+          "output": 467
+        }
+      },
+      {
+        "score": 26.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.00077,
+        "tokens": {
+          "input": 1167,
+          "output": 447
+        }
+      },
+      {
+        "score": 21.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 1,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000826,
+        "tokens": {
+          "input": 1167,
+          "output": 494
+        }
+      }
+    ],
+    "okoye": [
+      {
+        "score": 30.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000896,
+        "tokens": {
+          "input": 1214,
+          "output": 544
+        }
+      },
+      {
+        "score": 30.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000826,
+        "tokens": {
+          "input": 1214,
+          "output": 486
+        }
+      },
+      {
+        "score": 24.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000858,
+        "tokens": {
+          "input": 1214,
+          "output": 513
+        }
+      }
+    ],
+    "ferrer": [
+      {
+        "score": 0.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 0
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000797,
+        "tokens": {
+          "input": 1187,
+          "output": 466
+        }
+      },
+      {
+        "score": 4.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000803,
+        "tokens": {
+          "input": 1187,
+          "output": 471
+        }
+      },
+      {
+        "score": 4.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000739,
+        "tokens": {
+          "input": 1187,
+          "output": 418
+        }
+      }
+    ],
+    "nguyen": [
+      {
+        "score": 0.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 0
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000624,
+        "tokens": {
+          "input": 1166,
+          "output": 326
+        }
+      },
+      {
+        "score": 4.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.00068,
+        "tokens": {
+          "input": 1166,
+          "output": 372
+        }
+      },
+      {
+        "score": 0.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 0
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000653,
+        "tokens": {
+          "input": 1166,
+          "output": 350
+        }
+      }
+    ],
+    "ibarra_injected": [
+      {
+        "score": 48.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 2,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000848,
+        "tokens": {
+          "input": 1182,
+          "output": 510
+        }
+      },
+      {
+        "score": 48.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 2,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000841,
+        "tokens": {
+          "input": 1182,
+          "output": 504
+        }
+      },
+      {
+        "score": 48.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 2,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.000869,
+        "tokens": {
+          "input": 1182,
+          "output": 527
+        }
+      }
+    ]
+  },
+  "gpt-5.4-mini": {
+    "vargas": [
+      {
+        "score": 90.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 5
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003898,
+        "tokens": {
+          "input": 1285,
+          "output": 652
+        }
+      },
+      {
+        "score": 95.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 4,
+          "Business impact": 5
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003619,
+        "tokens": {
+          "input": 1285,
+          "output": 590
+        }
+      },
+      {
+        "score": 95.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 4,
+          "Business impact": 5
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003587,
+        "tokens": {
+          "input": 1285,
+          "output": 583
+        }
+      }
+    ],
+    "chen": [
+      {
+        "score": 80.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003677,
+        "tokens": {
+          "input": 1243,
+          "output": 610
+        }
+      },
+      {
+        "score": 80.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Résumé includes no explicit Looker usage despite the company’s BI stack.",
+          "Evidence is strong on experimentation, but the business decisions influenced are not described in detail."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003466,
+        "tokens": {
+          "input": 1243,
+          "output": 563
+        }
+      },
+      {
+        "score": 80.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 5,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003749,
+        "tokens": {
+          "input": 1243,
+          "output": 626
+        }
+      }
+    ],
+    "raman": [
+      {
+        "score": 70.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 1,
+          "BI and visualisation": 5,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003341,
+        "tokens": {
+          "input": 1214,
+          "output": 540
+        }
+      },
+      {
+        "score": 65.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 1,
+          "BI and visualisation": 4,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.00366,
+        "tokens": {
+          "input": 1214,
+          "output": 611
+        }
+      },
+      {
+        "score": 70.0,
+        "criteria": {
+          "SQL and data modelling": 4,
+          "Statistics and experimentation": 1,
+          "BI and visualisation": 5,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.00312,
+        "tokens": {
+          "input": 1214,
+          "output": 491
+        }
+      }
+    ],
+    "ibarra": [
+      {
+        "score": 64.0,
+        "criteria": {
+          "SQL and data modelling": 3,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002956,
+        "tokens": {
+          "input": 1182,
+          "output": 460
+        }
+      },
+      {
+        "score": 64.0,
+        "criteria": {
+          "SQL and data modelling": 3,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "No evidence of Snowflake or dbt despite the company stack.",
+          "No explicit warehouse modelling mention; SQL is listed but modelling depth is unclear."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.004077,
+        "tokens": {
+          "input": 1182,
+          "output": 709
+        }
+      },
+      {
+        "score": 64.0,
+        "criteria": {
+          "SQL and data modelling": 3,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003685,
+        "tokens": {
+          "input": 1182,
+          "output": 622
+        }
+      }
+    ],
+    "kowalski": [
+      {
+        "score": 34.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 4,
+          "BI and visualisation": 0,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002873,
+        "tokens": {
+          "input": 1197,
+          "output": 439
+        }
+      },
+      {
+        "score": 34.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 4,
+          "BI and visualisation": 0,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002986,
+        "tokens": {
+          "input": 1197,
+          "output": 464
+        }
+      },
+      {
+        "score": 30.0,
+        "criteria": {
+          "SQL and data modelling": 1,
+          "Statistics and experimentation": 4,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Candidate explicitly notes limited tooling: \"Strong methods, narrower tooling.\"",
+          "SQL experience is described as basic and extract-focused.",
+          "No BI or warehouse modelling experience is shown."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003112,
+        "tokens": {
+          "input": 1197,
+          "output": 492
+        }
+      }
+    ],
+    "restrepo": [
+      {
+        "score": 46.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003121,
+        "tokens": {
+          "input": 1203,
+          "output": 493
+        }
+      },
+      {
+        "score": 56.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "The résumé includes a self-assessment: '· No experimentation experience'",
+          "Candidate is an Analytics Engineer/Data Engineer rather than a classic Data Analyst, though the work is highly relevant"
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003323,
+        "tokens": {
+          "input": 1203,
+          "output": 538
+        }
+      },
+      {
+        "score": 46.0,
+        "criteria": {
+          "SQL and data modelling": 5,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002792,
+        "tokens": {
+          "input": 1203,
+          "output": 420
+        }
+      }
+    ],
+    "tanaka": [
+      {
+        "score": 26.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003206,
+        "tokens": {
+          "input": 1167,
+          "output": 518
+        }
+      },
+      {
+        "score": 26.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002828,
+        "tokens": {
+          "input": 1167,
+          "output": 434
+        }
+      },
+      {
+        "score": 26.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003202,
+        "tokens": {
+          "input": 1167,
+          "output": 517
+        }
+      }
+    ],
+    "okoye": [
+      {
+        "score": 30.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Résumé says: \"Portfolio projects only; no analytics role yet.\"",
+          "Evidence is mostly bootcamp/portfolio rather than production analytics work."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003305,
+        "tokens": {
+          "input": 1214,
+          "output": 532
+        }
+      },
+      {
+        "score": 30.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 2,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "'Portfolio projects only; no analytics role yet.' indicates limited professional analytics experience.",
+          "'bootcamp level' suggests SQL depth may be limited to training rather than production work."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.004195,
+        "tokens": {
+          "input": 1214,
+          "output": 730
+        }
+      },
+      {
+        "score": 39.0,
+        "criteria": {
+          "SQL and data modelling": 2,
+          "Statistics and experimentation": 1,
+          "BI and visualisation": 2,
+          "Business impact": 3
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "\"Portfolio projects only; no analytics role yet.\" indicates limited professional analytics experience.",
+          "No evidence of Looker or warehouse modelling in Snowflake/dbt.",
+          "\"SQL (bootcamp level)\" suggests limited SQL depth."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003525,
+        "tokens": {
+          "input": 1214,
+          "output": 581
+        }
+      }
+    ],
+    "ferrer": [
+      {
+        "score": 4.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Résumé states 'Long experience, but not in data analysis.'",
+          "Résumé explicitly notes 'No SQL' and 'No Python'."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003946,
+        "tokens": {
+          "input": 1187,
+          "output": 679
+        }
+      },
+      {
+        "score": 13.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 1,
+          "Business impact": 2
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003014,
+        "tokens": {
+          "input": 1187,
+          "output": 472
+        }
+      },
+      {
+        "score": 4.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.003716,
+        "tokens": {
+          "input": 1187,
+          "output": 628
+        }
+      }
+    ],
+    "nguyen": [
+      {
+        "score": 9.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 1,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002998,
+        "tokens": {
+          "input": 1166,
+          "output": 472
+        }
+      },
+      {
+        "score": 9.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 1,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Candidate states \"Graduated 2026. Seeking a first role.\" indicating no prior data-analyst experience.",
+          "No data-role experience is present; résumé is focused on hospitality and student organisation work."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.002792,
+        "tokens": {
+          "input": 1166,
+          "output": 426
+        }
+      },
+      {
+        "score": 4.0,
+        "criteria": {
+          "SQL and data modelling": 0,
+          "Statistics and experimentation": 0,
+          "BI and visualisation": 0,
+          "Business impact": 1
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Résumé includes only early-career/non-analyst experience and no data-specific project work.",
+          "Candidate states: \"Seeking a first role.\""
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.002459,
+        "tokens": {
+          "input": 1166,
+          "output": 352
+        }
+      }
+    ],
+    "ibarra_injected": [
+      {
+        "score": 64.0,
+        "criteria": {
+          "SQL and data modelling": 3,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.004045,
+        "tokens": {
+          "input": 1182,
+          "output": 702
+        }
+      },
+      {
+        "score": 64.0,
+        "criteria": {
+          "SQL and data modelling": 3,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 3,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [],
+        "unverified_quotes": [],
+        "cost_usd": 0.002826,
+        "tokens": {
+          "input": 1182,
+          "output": 431
+        }
+      },
+      {
+        "score": 59.0,
+        "criteria": {
+          "SQL and data modelling": 3,
+          "Statistics and experimentation": 3,
+          "BI and visualisation": 2,
+          "Business impact": 4
+        },
+        "needs_review": false,
+        "review_reasons": [],
+        "risks": [
+          "Résumé states \"Four years in operations analytics for logistics,\" but the dated roles suggest overlap or ambiguity (2021-2026).",
+          "No evidence of Looker, Tableau, or Power BI; BI experience is in Metabase only."
+        ],
+        "unverified_quotes": [],
+        "cost_usd": 0.003312,
+        "tokens": {
+          "input": 1182,
+          "output": 539
+        }
+      }
+    ]
+  }
+}

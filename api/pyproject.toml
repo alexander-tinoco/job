@@ -57,6 +57,11 @@ warn_unused_ignores = true
 disallow_untyped_defs = true
 exclude = ["^tests/"]
 
+# Test helpers are imported by scripts, so mypy follows them past the exclude.
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+ignore_errors = true
+
 # Strict where correctness matters most: the AI boundary and the PDF pipeline.
 [[tool.mypy.overrides]]
 module = ["app.ai.*", "app.ingest.*"]
