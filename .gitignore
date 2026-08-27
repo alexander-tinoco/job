@@ -22,3 +22,4 @@ node_modules/
 
 # Runtime
 uploads/
+api/scripts/.batch_id

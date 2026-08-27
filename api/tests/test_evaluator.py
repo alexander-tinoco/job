@@ -180,3 +180,19 @@ def test_injection_still_inflates_criterion_scores_by_one() -> None:
     inflation = {c.criterion_name: c.score - by_name[c.criterion_name] for c in injected.criteria}
 
     assert inflation == {"Python": 1, "Postgres": 1}
+
+
+# --- Cost control (measured, see docs/measurements.md) ---
+
+
+def test_reasoning_effort_is_set_explicitly() -> None:
+    """Unset, the model defaults to "medium" and bills ~20x more for the same scores.
+
+    Reasoning tokens are invisible in the response but charged as output, so
+    forgetting this parameter is expensive in a way nothing in the response
+    reveals. Pinned here so a cleanup cannot silently remove it.
+    """
+    from app.ai.evaluator import REASONING_EFFORT
+
+    assert REASONING_EFFORT in {"none", "low", "medium", "high", "xhigh"}
+    assert REASONING_EFFORT == "low"

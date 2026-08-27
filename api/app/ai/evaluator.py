@@ -9,6 +9,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
+from openai.types.shared import ReasoningEffort
+from openai.types.shared_params import Reasoning
+
 from app.ai.client import MODEL_ID, get_client
 from app.ai.schema import EvaluationOutput
 
@@ -17,6 +20,13 @@ _PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 
 # Room for a long structured answer without risking a truncated one.
 MAX_OUTPUT_TOKENS = 4000
+
+# Explicit, and not an optimisation to be tidied away later. gpt-5.4-mini is a
+# reasoning model: reasoning tokens are invisible in the response but billed as
+# output, and the model defaults to "medium". Leaving it unset cost roughly 20x
+# more per résumé for identical scores in measurement (see docs/measurements).
+# Supported values here are none | low | medium | high | xhigh.
+REASONING_EFFORT: ReasoningEffort = "low"
 
 RESUME_OPEN = "<resume>"
 RESUME_CLOSE = "</resume>"
@@ -84,6 +94,7 @@ def evaluate(request: EvaluationRequest) -> EvaluationOutput:
         input=build_input(request),  # type: ignore[arg-type]
         text_format=EvaluationOutput,
         max_output_tokens=MAX_OUTPUT_TOKENS,
+        reasoning=Reasoning(effort=REASONING_EFFORT),
         store=False,  # Résumés are personal data; do not leave copies on the provider.
     )
     parsed = response.output_parsed

@@ -102,10 +102,17 @@ Per evaluation (a single call per candidate):
 
 `gpt-5.4-mini`: $0.75 input / $0.075 cached input / $4.50 output per 1M. Batch: −50 %.
 
+> **`reasoning.effort` must be set explicitly, or none of these numbers hold.**
+> `gpt-5.4-mini` is a reasoning model: reasoning tokens never appear in the response
+> but are billed as output at $4.50/1M, and the model defaults to `medium`. Measured,
+> that is roughly **20x** the cost of `low` for identical scores — the difference
+> between $1.23 and about $25 for 500 résumés. See `docs/measurements.md`. The
+> setting is pinned in `app/ai/evaluator.py` and guarded by a test.
+
 | Path | Per résumé | **500 résumés** |
 |---|---|---|
 | Standard API + caching | $0.0048 | $2.38 |
-| **Batch API** (recommended) | **$0.0029** | **$1.44** |
+| **Batch API** (recommended, `effort: low`) | **$0.0025** | **$1.23** |
 
 ### Total monthly cost per client
 
