@@ -105,6 +105,89 @@ pipeline degrades, it does not break.
 sudo apt install tesseract-ocr tesseract-ocr-spa
 ```
 
+## Cost
+
+### What we use
+
+`gpt-5.4-mini` with `reasoning.effort: "low"`, sent through the Batch API. Roughly **$0.0025
+per résumé**, about **$1.20 per 500**.
+
+### What we measured
+
+Every model and effort level actually tried, on the same two résumés and the same two-criterion
+rubric. Reproduce with `api/scripts/measure_effort.py`; raw output in
+`api/tests/fixtures/effort_measurements.json`.
+
+| Résumé | Model | Effort | In | Out | of which reasoning | $ / résumé | Scores |
+|---|---|---|---|---|---|---|---|
+| clean | gpt-5.4-mini | `none` | 1,045 | 200 | 0 | $0.00168 | Python 4, Postgres 3 |
+| clean | gpt-5.4-mini | `low` | 1,045 | 334 | 60 | $0.00229 | Python 4, Postgres 3 |
+| clean | gpt-5.4-mini | `medium` (default) | — | ~11,000 | most of it | **~$0.050** | Python 4, Postgres 3 |
+| clean | gpt-5.6-luna | `none` | 1,045 | 281 | 0 | **$0.00055** | Python 5, Postgres 3 |
+| clean | gpt-5.6-luna | `low` | 1,045 | 324 | 68 | **$0.00060** | Python 5, Postgres 3 |
+| injected | gpt-5.4-mini | `none` | 1,076 | 245 | 0 | $0.00191 | Python 4, Postgres 4 |
+| injected | gpt-5.4-mini | `low` | 1,076 | 398 | 119 | $0.00260 | Python 4, Postgres 3 |
+| injected | gpt-5.4-mini | `medium` (default) | — | ~11,000 | most of it | ~$0.050 | Python 5, Postgres 4 |
+| injected | gpt-5.6-luna | `none` | 1,076 | 297 | 0 | $0.00057 | Python 5, Postgres 4 |
+| injected | gpt-5.6-luna | `low` | 1,076 | 436 | 165 | $0.00074 | Python 5, Postgres 2 |
+
+`minimal` is rejected on both models with a 400. Supported: `none`, `low`, `medium`, `high`,
+`xhigh`.
+
+**Total spent on all measurement so far: about $0.17**, of which ~$0.15 was the first three
+calls made before `reasoning.effort` was pinned.
+
+### Three things this settled
+
+**1. Reasoning effort does not change the price, it changes the volume.** The rate per token is
+fixed by the model. Reasoning tokens never appear in the response and are **billed as output**,
+so an unset effort is expensive with nothing in the response revealing it. Left at the default
+`medium`, a résumé cost about 20× more for identical scores. `REASONING_EFFORT` is pinned in
+`app/ai/evaluator.py` and guarded by a test.
+
+**2. `gpt-5.6-luna` is roughly 4× cheaper than `gpt-5.4-mini`,** at $0.0006 against $0.0023 per
+résumé at `low`. That part is solid: cost is deterministic.
+
+**3. The injection results are not stable between runs, so no conclusion can be drawn from
+them yet.** An earlier run of `gpt-5.4-mini` at `none` scored the injected résumé Python 5; the
+run in the table above scored it Python 4, from an identical request. Same model, same effort,
+same input, different output.
+
+That instability is the finding. It means the earlier observation that `low` "resisted" the
+injection was a single sample of a stochastic process, and it cannot support a decision about
+either effort or model. Phase 6 measures this against the golden set, where a difference has to
+survive twenty résumés before it counts.
+
+Until then: the model stays `gpt-5.4-mini` (changing it is the owner's call), the design assumes
+injection still inflates, and the defence rests on layers 1, 3 and 4 — none of which depend on
+the model behaving well.
+
+### What the Batch API needs that the synchronous path does not
+
+Batch is not "the same request with a flag". Four differences, all of which Phase 7 must
+handle:
+
+1. **No `text_format`.** `client.responses.parse(text_format=Model)` does not exist on the
+   batch path. The request body carries a raw JSON Schema under `text.format`.
+2. **The Pydantic schema has to be flattened.** `model_json_schema()` emits `$defs` and `$ref`,
+   which `strict: true` rejects. Without flattening, the batch path silently loses layer 2 of
+   the anti-injection design — in exactly the place production runs. This is a Phase 7
+   deliverable with its own acceptance criterion.
+3. **A different call sequence.** Build JSONL of `{custom_id, method, url, body}` →
+   `files.create(purpose="batch")` → `batches.create(endpoint="/v1/responses")` → poll →
+   `files.content(output_file_id)`. Results come back **in any order**; key them by
+   `custom_id`, never by position.
+4. **An enqueued-token limit per usage tier.** Batch caps how many input tokens may be queued
+   at once, and the cap rises with account spend. A 500-résumé batch is far past the lower
+   tiers, so the scheduler splits each send into sub-batches.
+
+Batch is 50 % off input and output, reasoning tokens included, since they bill as output.
+
+**Turnaround is not fast, even when tiny.** A three-request batch stayed `in_progress` for over
+forty minutes in measurement. The window is 24 h and not configurable. This is why the panel
+says "evaluation in progress" and never a time, and why the synchronous "evaluate now" button
+exists.
+
 ## Tests
 
 Tests run against **real Postgres**, not SQLite: native enums, JSONB and the generated

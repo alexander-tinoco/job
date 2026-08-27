@@ -323,11 +323,18 @@ billed as output at $4.50/1M, and the model defaults to `medium`. Unset, a résu
 20× more for identical scores. `REASONING_EFFORT` is pinned to `low` in
 `app/ai/evaluator.py` and guarded by a test.
 
-Measurement also showed `low` resisting an injection that `medium` and `none` both fell for —
-the injected résumé scored identically to the clean one. **That is n=1** and is not treated as
-settled: one résumé, one payload, one run of a stochastic model. Phase 6 confirms or refutes it
-across the golden set. Until then the design assumes injection still inflates, and the defence
-rests on layers 1, 3 and 4 (§6), not on the model's own resistance.
+A first run appeared to show `low` resisting an injection that `medium` and `none` fell for.
+**A repeat of the identical request produced different scores, so that observation has been
+retracted** (`docs/measurements.md`). The instability is itself the finding: single samples of a
+stochastic model cannot decide either effort or model. Phase 6 measures this against the golden
+set, where a difference must survive twenty résumés before it counts. Until then the design
+assumes injection still inflates, and the defence rests on layers 1, 3 and 4 (§6), not on the
+model's own resistance.
+
+Measurement also put `gpt-5.6-luna` at roughly **4× cheaper** than `gpt-5.4-mini` ($0.0006 vs
+$0.0023 per résumé at `low`). Cost is deterministic and that part is solid, but the model stays
+`gpt-5.4-mini`: changing it is the owner's decision, and after one wrong conclusion drawn from a
+single sample, a cost advantage does not get to decide on its own. Phase 6 evaluates it properly.
 
 ### 5.1.2 The batch path needs its own schema work
 

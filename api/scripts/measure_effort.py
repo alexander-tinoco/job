@@ -15,21 +15,29 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from app.ai.client import MODEL_ID, get_client  # noqa: E402
+from app.ai.client import get_client  # noqa: E402
 from app.ai.evaluator import MAX_OUTPUT_TOKENS, build_input  # noqa: E402
 from app.ai.schema import EvaluationOutput  # noqa: E402
 from scripts.record_fixtures import CRITERIA, INJECTED, STRONG  # noqa: E402
 
-# gpt-5.4-mini pricing, USD per 1M tokens (plan §3).
-INPUT_PER_M = 0.75
-OUTPUT_PER_M = 4.50
+# USD per 1M tokens, standard tier.
+PRICES = {
+    "gpt-5.4-mini": (0.75, 4.50),
+    "gpt-5.6-luna": (0.20, 1.20),
+}
 
-EFFORTS = ["none", "low"]
+# (model, effort) combinations to measure.
+MATRIX = [
+    ("gpt-5.4-mini", "none"),
+    ("gpt-5.4-mini", "low"),
+    ("gpt-5.6-luna", "none"),
+    ("gpt-5.6-luna", "low"),
+]
 CASES = {"strong": STRONG, "injected": INJECTED}
 OUT = Path(__file__).resolve().parent.parent / "tests" / "fixtures" / "effort_measurements.json"
 
 
-def call(resume: str, effort: str) -> dict[str, object]:
+def call(resume: str, effort: str, model: str) -> dict[str, object]:
     from app.ai.evaluator import EvaluationRequest, RubricCriterion  # noqa: F401
 
     request = EvaluationRequest(
@@ -39,7 +47,7 @@ def call(resume: str, effort: str) -> dict[str, object]:
         resume_text=resume,
     )
     response = get_client().responses.parse(
-        model=MODEL_ID,
+        model=model,
         input=build_input(request),  # type: ignore[arg-type]
         text_format=EvaluationOutput,
         max_output_tokens=MAX_OUTPUT_TOKENS,
@@ -49,9 +57,11 @@ def call(resume: str, effort: str) -> dict[str, object]:
     usage = response.usage
     assert usage is not None
     reasoning = getattr(usage.output_tokens_details, "reasoning_tokens", 0) or 0
-    cost = (usage.input_tokens * INPUT_PER_M + usage.output_tokens * OUTPUT_PER_M) / 1_000_000
+    price_in, price_out = PRICES[model]
+    cost = (usage.input_tokens * price_in + usage.output_tokens * price_out) / 1_000_000
     parsed = response.output_parsed
     return {
+        "model": model,
         "effort": effort,
         "input_tokens": usage.input_tokens,
         "output_tokens": usage.output_tokens,
@@ -65,13 +75,15 @@ def main() -> int:
     results: dict[str, list[dict[str, object]]] = {}
     for case, resume in CASES.items():
         results[case] = []
-        for effort in EFFORTS:
-            print(f"calling {case} at effort={effort}...", flush=True)
+        for model, effort in MATRIX:
+            print(f"calling {case} on {model} at effort={effort}...", flush=True)
             try:
-                results[case].append(call(resume, effort))
+                results[case].append(call(resume, effort, model))
             except Exception as exc:  # noqa: BLE001 - report and continue
-                print(f"  FAILED: {type(exc).__name__}: {exc}")
-                results[case].append({"effort": effort, "error": f"{type(exc).__name__}"})
+                print(f"  FAILED: {type(exc).__name__}: {str(exc)[:120]}")
+                results[case].append(
+                    {"model": model, "effort": effort, "error": f"{type(exc).__name__}"}
+                )
     OUT.write_text(json.dumps(results, indent=2, ensure_ascii=False), encoding="utf-8")
     print(f"wrote {OUT.name}")
     return 0
