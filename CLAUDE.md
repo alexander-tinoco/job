@@ -133,8 +133,13 @@ chore(infra): add husky and commitlint
 ### Hooks (Phase 0)
 | Hook | What runs |
 |---|---|
-| `pre-commit` | `ruff check --fix`, `ruff format` and `mypy` on staged files; `pytest -q` if `api/` was touched |
-| `commit-msg` | `commitlint` |
+| `pre-commit` | `ruff check`, `ruff format --check` and `mypy` over `api/`, only when a Python file under `api/` is staged. Always via `api/.venv/bin/*`, never the PATH — otherwise the hook silently validates with whatever version the machine has installed |
+| `commit-msg` | `commitlint` — type, scope, lowercase subject, and **title only** (`body-empty`, `footer-empty`) |
+
+The hook checks but never rewrites: an auto-fix would leave changes unstaged and silently
+outside the commit. When it fails, run `ruff check --fix . && ruff format .` in `api/` yourself.
+`pytest` is not in the hook — the tester role runs it in every phase, so no commit reaches
+gate 2 without it, and the hook stays fast.
 
 Never `--no-verify`. If a hook gets in the way, fix the hook — don't bypass it.
 

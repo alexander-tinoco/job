@@ -1,0 +1,16 @@
+# Only run when a Python file under api/ is staged.
+if ! git diff --cached --name-only --diff-filter=ACM | grep -q '^api/.*\.py$'; then
+  exit 0
+fi
+
+# Always use the project venv, never whatever happens to be on PATH.
+if [ ! -x api/.venv/bin/ruff ]; then
+  echo "pre-commit: api/.venv is missing or incomplete."
+  echo "Run: cd api && uv venv --python 3.12 && uv pip install -e '.[dev]'"
+  exit 1
+fi
+
+cd api || exit 1
+.venv/bin/ruff check . || exit 1
+.venv/bin/ruff format --check . || exit 1
+.venv/bin/mypy . || exit 1
