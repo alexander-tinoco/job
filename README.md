@@ -69,6 +69,42 @@ application id.
 There is **no rate limiting** on this endpoint yet. Cloudflare goes in front of the API at
 deployment (Phase 11).
 
+## Extraction and sanitization
+
+Runs inline on upload — deterministic, free, and fast, so the panel shows the résumé, its text
+and any tampering flags from the moment it arrives. **No model is involved.**
+
+A span of text is treated as hidden from a human when any of these holds:
+
+| Rule | Signal |
+|---|---|
+| `invisible_render_mode` | PDF text render mode 3 draws nothing |
+| `transparent` | opacity below 0.05 |
+| `too_small` | font under 4pt |
+| `low_contrast` | WCAG contrast under 1.5:1 against the background **under that span** |
+| `off_page` | more than half the box lies outside the page |
+| `covered` | an opaque shape painted after it, completely over it |
+
+Only `visible_text` is ever sent to the model. `total_text` keeps everything, and the delta is
+the evidence shown to HR. Backgrounds are resolved per span, not per page, so dark-on-dark text
+inside a navy sidebar is caught while the legible white text beside it is not.
+
+Deterministic injection patterns **flag, they never reject** — a false positive removes a real
+person from a hiring process.
+
+### OCR
+
+Scanned résumés have no text layer, so **none of the rules above can protect them**. They are
+flagged `ocr_no_hidden_text_detection` and marked for manual review rather than quietly
+evaluated as though they had been checked.
+
+OCR needs the Tesseract binary. Without it the file is still accepted and still flagged — the
+pipeline degrades, it does not break.
+
+```bash
+sudo apt install tesseract-ocr tesseract-ocr-spa
+```
+
 ## Tests
 
 Tests run against **real Postgres**, not SQLite: native enums, JSONB and the generated

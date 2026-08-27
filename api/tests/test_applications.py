@@ -32,7 +32,9 @@ def test_a_valid_application_is_accepted(
 
     assert response.status_code == 201
     body = response.json()
-    assert body["state"] == ApplicationState.RECEIVED
+    # Extraction runs inline because it is deterministic and free, so the
+    # application is already past `received` by the time we reply (plan §4.1).
+    assert body["state"] == ApplicationState.EXTRACTED
     assert body["opening_title"] == "Backend Engineer"
 
     application = session.get(Application, body["application_id"])

@@ -7,8 +7,8 @@ from app.api.deps import SessionDep
 from app.db.models import ResumeDocument
 from app.schemas.applications import ApplicantDetails, ApplicationReceipt
 from app.services import applications as service
+from app.services import ingestion, storage
 from app.services import openings as openings_service
-from app.services import storage
 
 router = APIRouter(prefix="/openings", tags=["public"])
 
@@ -68,8 +68,13 @@ async def apply(
         session.rollback()
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
 
-    # Text extraction happens in Phase 4; this row only records where the file is.
     application.resume = ResumeDocument(storage_path=stored.relative_path)
+    session.flush()
+
+    # Deterministic, free and fast, so it runs inline: the panel shows the
+    # résumé, its text and any tampering flags from the moment it arrives,
+    # instead of waiting for the evaluation batch (plan §4.1).
+    ingestion.ingest_application(session, application)
     session.commit()
 
     return ApplicationReceipt(
