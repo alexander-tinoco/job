@@ -6,7 +6,7 @@ fi
 # Always use the project venv, never whatever happens to be on PATH.
 if [ ! -x api/.venv/bin/ruff ]; then
   echo "pre-commit: api/.venv is missing or incomplete."
-  echo "Run: cd api && uv venv --python 3.12 && uv pip install -e '.[dev]'"
+  echo "Run: cd api && uv venv --python 3.14 && uv pip install -e '.[dev]'"
   exit 1
 fi
 

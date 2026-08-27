@@ -41,7 +41,7 @@ caps the main attack vector (§6).
 
 | Decision | Choice | Rationale |
 |---|---|---|
-| Backend | Python 3.12 + FastAPI + SQLAlchemy 2.0 | Best PDF-parsing ecosystem |
+| Backend | Python 3.14 + FastAPI + SQLAlchemy 2.0 | Best PDF-parsing ecosystem |
 | Frontend | React + Vite + TypeScript in `web/` | Public form and HR panel in one small app |
 | Database | **PostgreSQL 16, no extensions** | Panel search uses `tsvector`, which ships with it |
 | Résumé extraction | **PyMuPDF, no AI.** Tesseract as fallback only | Deterministic, free, and seeing the raw PDF is what makes hidden-text detection possible (§6) |

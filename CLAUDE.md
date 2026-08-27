@@ -12,7 +12,7 @@ MVP for AI-assisted candidate screening, aimed at small businesses. The full pla
 `docs/PLAN-MVP.md` — **read it before proposing anything**. It is the source of truth for
 scope: if something is not in there, it does not get built until the plan says so.
 
-Stack: Python 3.12 · FastAPI · SQLAlchemy 2.0 · PostgreSQL 16 (no extensions) · React/Vite in
+Stack: Python 3.14 · FastAPI · SQLAlchemy 2.0 · PostgreSQL 16 (no extensions) · React/Vite in
 `web/`. AI: OpenAI `gpt-5.4-mini` via the Batch API. **No RAG, no embeddings, no pgvector** —
 evaluation context lives in the prompt (§4 of the plan).
 
@@ -147,7 +147,7 @@ Never `--no-verify`. If a hook gets in the way, fix the hook — don't bypass it
 
 ## Code rules
 
-- Python 3.12. Types on every public signature. `mypy --strict` in `app/ai/` and `app/ingest/`.
+- Python 3.14. Types on every public signature. `mypy --strict` in `app/ai/` and `app/ingest/`.
 - No `Any` at boundaries (endpoints, schemas, public return types).
 - `ruff` for linting and formatting. No personal config: whatever `pyproject.toml` says.
 - Pydantic v2 for anything crossing a boundary (HTTP or the OpenAI API).
