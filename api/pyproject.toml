@@ -11,6 +11,8 @@ dependencies = [
     "psycopg[binary]>=3.2",
     "pydantic-settings>=2.7",
     "pymupdf>=1.25",
+    # Required by FastAPI to parse multipart form uploads.
+    "python-multipart>=0.0.20",
     "openai>=1.59",
 ]
 

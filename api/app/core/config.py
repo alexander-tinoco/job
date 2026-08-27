@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     admin_token: str = ""
     environment: str = "development"
 
+    # Résumé storage. The path is a root; files land under {root}/{application_id}/.
+    uploads_dir: str = "uploads"
+    max_upload_bytes: int = 10 * 1024 * 1024
+
 
 @lru_cache
 def get_settings() -> Settings:

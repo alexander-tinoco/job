@@ -1,4 +1,5 @@
 from collections.abc import Iterator
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -61,9 +62,16 @@ def session(engine: Engine) -> Iterator[Session]:
 
 
 @pytest.fixture
-def client(session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
-    """A client bound to the test transaction, with the admin guard configured."""
+def client(
+    session: Session, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> Iterator[TestClient]:
+    """A client bound to the test transaction, with the admin guard configured.
+
+    Uploads go to a per-test tmp_path so a test can never write into the real
+    uploads directory.
+    """
     monkeypatch.setenv("ADMIN_TOKEN", ADMIN_TOKEN)
+    monkeypatch.setenv("UPLOADS_DIR", str(tmp_path / "uploads"))
     get_settings.cache_clear()
 
     app.dependency_overrides[get_session] = lambda: session

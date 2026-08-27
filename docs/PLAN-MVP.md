@@ -494,4 +494,5 @@ job/
 | A batch fails or is delayed | Candidates without a score | `job_queue` with retries and per-candidate state; the panel still shows résumé and flags; "evaluate now" is the escape hatch |
 | Exceeding the tier's enqueued-token limit | The whole send is rejected | Mandatory splitting in the scheduler (§3), tested in Phase 7 with an artificially low limit |
 | HR expects instant results | Unmet expectation | The panel says "evaluation in progress", never a specific time: the Batch window is 24 h and not configurable |
+| **The public apply endpoint has no rate limiting** | Disk fill, junk applications | The size limit stops the obvious case, but nothing stops a thousand applications with invented emails. Deliberately deferred to Phase 11: putting Cloudflare in front of the API solves it for free and better than an in-app limiter would |
 | **One deployment per client stops scaling** | Operational load | Fine at 3 clients, a full-time job at 15. Not solved in the MVP, but the date it starts hurting is closer than the plan suggests |

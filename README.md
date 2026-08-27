@@ -51,6 +51,24 @@ The public opening page (`GET /openings/{slug}`) needs no token and never expose
 `company_context` or the rubric — publishing the scoring criteria would tell candidates
 exactly what to write.
 
+## Applying
+
+`POST /openings/{slug}/apply` is public — the slug is the invitation. It takes a multipart form
+with `full_name`, `email`, `consent`, an optional `phone` and `linkedin_url`, and a `resume`
+PDF.
+
+Uploads are validated **while streaming**, not after: the first bytes must match the `%PDF-`
+magic number (the `Content-Type` header is supplied by the uploader, so a renamed executable
+passes it), and the read aborts past `MAX_UPLOAD_BYTES`. Accepting the whole body first would
+mean a 2 GB upload has already filled the disk by the time it is rejected.
+
+Files land in `{UPLOADS_DIR}/{application_id}/{random}.pdf`. The filename is random rather than
+derived from the candidate's name, so the path cannot be guessed even by someone who knows the
+application id.
+
+There is **no rate limiting** on this endpoint yet. Cloudflare goes in front of the API at
+deployment (Phase 11).
+
 ## Tests
 
 Tests run against **real Postgres**, not SQLite: native enums, JSONB and the generated

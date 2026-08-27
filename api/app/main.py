@@ -1,11 +1,12 @@
 from fastapi import FastAPI
 
-from app.api.v1 import openings, public
+from app.api.v1 import applications, openings, public
 from app.core.config import get_settings
 
 app = FastAPI(title="Candidate Screening API")
 app.include_router(openings.router)
 app.include_router(public.router)
+app.include_router(applications.router)
 
 
 @app.get("/health")
