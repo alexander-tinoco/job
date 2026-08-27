@@ -1,0 +1,86 @@
+# Candidate Screening
+
+AI-assisted résumé screening for small businesses. Applications are received through a public
+link, parsed deterministically, and scored against a weighted rubric with quoted evidence from
+the résumé itself. A person always makes the final call.
+
+Full design: [`docs/PLAN-MVP.md`](docs/PLAN-MVP.md). Working rules: [`CLAUDE.md`](CLAUDE.md).
+
+## Requirements
+
+- Python 3.14
+- [uv](https://docs.astral.sh/uv/)
+- Docker (for Postgres)
+- Node 20+ (only for the commit hooks)
+
+## Setup
+
+```bash
+# Database
+docker compose up -d
+
+# Commit hooks
+npm install
+
+# API
+cd api
+uv venv --python 3.14
+uv pip install -e ".[dev]"
+cp ../.env.example ../.env      # then fill in OPENAI_API_KEY
+uv run alembic upgrade head
+```
+
+## Running
+
+```bash
+cd api
+.venv/bin/uvicorn app.main:app --reload    # http://localhost:8000/docs
+```
+
+## Tests
+
+Tests run against **real Postgres**, not SQLite: native enums, JSONB and the generated
+`tsvector` column do not exist in SQLite, so an in-memory database would let tests pass while
+production fails. They create and drop a throwaway `screening_test` database on each run, so
+`docker compose up -d` must be running first.
+
+```bash
+cd api
+.venv/bin/pytest
+```
+
+## Checks
+
+```bash
+cd api
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
+.venv/bin/mypy .
+```
+
+The `pre-commit` hook runs these three whenever a Python file under `api/` is staged. It checks
+but never rewrites — an auto-fix would leave changes unstaged and silently outside the commit.
+When it fails, run `.venv/bin/ruff check --fix . && .venv/bin/ruff format .` yourself.
+
+## Migrations
+
+```bash
+cd api
+.venv/bin/alembic revision --autogenerate -m "what changed"
+.venv/bin/alembic upgrade head
+.venv/bin/alembic downgrade base    # full teardown, enum types included
+```
+
+Autogenerate does not emit `DROP TYPE` for native enums. If you add one, drop it explicitly in
+the migration's `downgrade()` or the next `upgrade` will fail with "type already exists".
+
+## Layout
+
+| Path | What lives there |
+|---|---|
+| `api/app/core/` | Config and shared dependencies |
+| `api/app/db/` | SQLAlchemy models, session, enums, UUIDv7 keys |
+| `api/app/ingest/` | PDF extraction, sanitization, integrity — **no AI** |
+| `api/app/ai/` | The single OpenAI call, prompts, quote verification |
+| `api/app/workers/` | Queue consumer and batch scheduler |
+| `web/` | React panel and public application form |
