@@ -107,86 +107,95 @@ sudo apt install tesseract-ocr tesseract-ocr-spa
 
 ## Cost
 
-### What we use
+Everything below is measured, not estimated. Reproduce with the scripts in `api/scripts/`;
+raw output in `api/tests/fixtures/`.
 
-`gpt-5.4-mini` with `reasoning.effort: "low"`, sent through the Batch API. Roughly **$0.0025
-per résumé**, about **$1.20 per 500**.
+### Every model and effort we tried
 
-### What we measured
+Same two résumés, same two-criterion rubric, ~1,050 input tokens each.
 
-Every model and effort level actually tried, on the same two résumés and the same two-criterion
-rubric. Reproduce with `api/scripts/measure_effort.py`; raw output in
-`api/tests/fixtures/effort_measurements.json`.
-
-| Résumé | Model | Effort | In | Out | of which reasoning | $ / résumé | Scores |
-|---|---|---|---|---|---|---|---|
-| clean | gpt-5.4-mini | `none` | 1,045 | 200 | 0 | $0.00168 | Python 4, Postgres 3 |
-| clean | gpt-5.4-mini | `low` | 1,045 | 334 | 60 | $0.00229 | Python 4, Postgres 3 |
-| clean | gpt-5.4-mini | `medium` (default) | — | ~11,000 | most of it | **~$0.050** | Python 4, Postgres 3 |
-| clean | gpt-5.6-luna | `none` | 1,045 | 281 | 0 | **$0.00055** | Python 5, Postgres 3 |
-| clean | gpt-5.6-luna | `low` | 1,045 | 324 | 68 | **$0.00060** | Python 5, Postgres 3 |
-| injected | gpt-5.4-mini | `none` | 1,076 | 245 | 0 | $0.00191 | Python 4, Postgres 4 |
-| injected | gpt-5.4-mini | `low` | 1,076 | 398 | 119 | $0.00260 | Python 4, Postgres 3 |
-| injected | gpt-5.4-mini | `medium` (default) | — | ~11,000 | most of it | ~$0.050 | Python 5, Postgres 4 |
-| injected | gpt-5.6-luna | `none` | 1,076 | 297 | 0 | $0.00057 | Python 5, Postgres 4 |
-| injected | gpt-5.6-luna | `low` | 1,076 | 436 | 165 | $0.00074 | Python 5, Postgres 2 |
+| Model | Effort | Output tokens | of which reasoning | $ / résumé | Clean CV scores |
+|---|---|---|---|---|---|
+| gpt-5.4-mini | `none` | 200 | 0 | $0.00168 | Python 4, Postgres 3 |
+| gpt-5.4-mini | `low` **(ours)** | 334 | 60 | $0.00229 | Python 4, Postgres 3 |
+| gpt-5.4-mini | `medium` (default) | 737 | 516 | $0.00410 | Python 5, Postgres 3 |
+| gpt-5.6-luna | `none` | 281 | 0 | $0.00055 | Python 5, Postgres 3 |
+| gpt-5.6-luna | `low` | 324 | 68 | $0.00060 | Python 5, Postgres 3 |
+| gpt-5.6-luna | `medium` | 388 / 400 / 519 | 133 / 130 / 253 | $0.00068–0.00083 | 4,3 · 4,3 · 4,2 |
 
 `minimal` is rejected on both models with a 400. Supported: `none`, `low`, `medium`, `high`,
-`xhigh`.
+`xhigh`. Batch is 50 % off input and output; reasoning tokens bill as output, so they are
+discounted too.
 
-**Total spent on all measurement so far: about $0.17**, of which ~$0.15 was the first three
-calls made before `reasoning.effort` was pinned.
+**Total spent on measurement: about $0.20.**
 
-### Three things this settled
+### A correction
 
-**1. Reasoning effort does not change the price, it changes the volume.** The rate per token is
-fixed by the model. Reasoning tokens never appear in the response and are **billed as output**,
-so an unset effort is expensive with nothing in the response revealing it. Left at the default
-`medium`, a résumé cost about 20× more for identical scores. `REASONING_EFFORT` is pinned in
-`app/ai/evaluator.py` and guarded by a test.
+An earlier version of this file claimed the default `medium` effort cost "roughly 20×" `low`.
+**That was wrong.** It came from dividing an observed $0.15 spend by three calls, never from a
+measurement. Measured directly, `gpt-5.4-mini` at `medium` costs **1.79×** `low` — real, but
+nothing like 20×. The $0.15 is not accounted for by these numbers and remains unexplained; the
+per-request breakdown in the OpenAI dashboard would settle it.
 
-**2. `gpt-5.6-luna` is roughly 4× cheaper than `gpt-5.4-mini`,** at $0.0006 against $0.0023 per
-résumé at `low`. That part is solid: cost is deterministic.
+Pinning `reasoning.effort` is still right — being explicit about a parameter that silently
+changes cost is worth doing, and 1.79× is worth having — but it is not the emergency the earlier
+note described.
 
-**3. The injection results are not stable between runs, so no conclusion can be drawn from
-them yet.** An earlier run of `gpt-5.4-mini` at `none` scored the injected résumé Python 5; the
-run in the table above scored it Python 4, from an identical request. Same model, same effort,
-same input, different output.
+### What reasoning effort actually does
 
-That instability is the finding. It means the earlier observation that `low` "resisted" the
-injection was a single sample of a stochastic process, and it cannot support a decision about
-either effort or model. Phase 6 measures this against the golden set, where a difference has to
-survive twenty résumés before it counts.
+It does not change the price per token; it changes how many output tokens get burned. Reasoning
+tokens never appear in the response and are **billed as output**, which is what makes the cost
+move without anything visible changing.
 
-Until then: the model stays `gpt-5.4-mini` (changing it is the owner's call), the design assumes
-injection still inflates, and the defence rests on layers 1, 3 and 4 — none of which depend on
-the model behaving well.
+The size of that effect is per model, and the difference is large: at `medium`, `gpt-5.4-mini`
+spent 516 reasoning tokens while `gpt-5.6-luna` spent 130–253 for the same work. "Medium" is not
+a comparable setting across models.
+
+### The model decision
+
+| Option | $ / résumé | vs. current |
+|---|---|---|
+| gpt-5.4-mini `low` (current) | $0.00229 | — |
+| gpt-5.6-luna `low` | $0.00060 | 26 % |
+| gpt-5.6-luna `medium` | $0.00075 | **32 %** |
+
+`gpt-5.6-luna` at `medium` costs **a third of what we pay now at `low`**, while spending more
+reasoning on each résumé, and sits in the flagship family rather than the mini line.
+
+**Quality cannot be compared from this data.** Scores differ between the two models on the same
+CV (luna reads Python as 5 where mini reads 4), and neither is verified against a human ranking.
+Worse, the numbers are not stable within a model: `luna` at `medium` scored the same clean CV
+Postgres 3, 3 and 2 across three identical runs. **A ±1 swing appears with no injection and no
+change of input at all**, which means the ±1 differences previously attributed to injection sit
+inside the noise floor.
+
+Python was stable at 4 across all three clean runs and moved to 5 in two of three injected runs
+— suggestive, not conclusive at n=3.
+
+The model therefore stays `gpt-5.4-mini` until Phase 6 ranks both against 15–20 real résumés
+with a human ordering. Cost is settled; quality is not, and cost does not get to decide alone.
 
 ### What the Batch API needs that the synchronous path does not
 
-Batch is not "the same request with a flag". Four differences, all of which Phase 7 must
-handle:
+Batch is not "the same request with a flag". Four differences, all of which Phase 7 must handle:
 
-1. **No `text_format`.** `client.responses.parse(text_format=Model)` does not exist on the
-   batch path. The request body carries a raw JSON Schema under `text.format`.
+1. **No `text_format`.** `client.responses.parse(text_format=Model)` does not exist on the batch
+   path. The request body carries a raw JSON Schema under `text.format`.
 2. **The Pydantic schema has to be flattened.** `model_json_schema()` emits `$defs` and `$ref`,
    which `strict: true` rejects. Without flattening, the batch path silently loses layer 2 of
-   the anti-injection design — in exactly the place production runs. This is a Phase 7
-   deliverable with its own acceptance criterion.
+   the anti-injection design — in exactly the place production runs. Phase 7 deliverable with
+   its own acceptance criterion.
 3. **A different call sequence.** Build JSONL of `{custom_id, method, url, body}` →
    `files.create(purpose="batch")` → `batches.create(endpoint="/v1/responses")` → poll →
-   `files.content(output_file_id)`. Results come back **in any order**; key them by
-   `custom_id`, never by position.
-4. **An enqueued-token limit per usage tier.** Batch caps how many input tokens may be queued
-   at once, and the cap rises with account spend. A 500-résumé batch is far past the lower
-   tiers, so the scheduler splits each send into sub-batches.
-
-Batch is 50 % off input and output, reasoning tokens included, since they bill as output.
+   `files.content(output_file_id)`. Results come back **in any order**; key them by `custom_id`,
+   never by position.
+4. **An enqueued-token limit per usage tier.** Batch caps how many input tokens may be queued at
+   once, and the cap rises with account spend. A 500-résumé batch is far past the lower tiers,
+   so the scheduler splits each send into sub-batches.
 
 **Turnaround is not fast, even when tiny.** A three-request batch stayed `in_progress` for over
-forty minutes in measurement. The window is 24 h and not configurable. This is why the panel
-says "evaluation in progress" and never a time, and why the synchronous "evaluate now" button
-exists.
+forty minutes in measurement. The window is 24 h and not configurable. This is why the panel says
+"evaluation in progress" and never a time, and why the synchronous "evaluate now" button exists.
 
 ## Tests
 

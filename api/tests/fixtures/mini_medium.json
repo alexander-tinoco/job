@@ -1,0 +1,43 @@
+{
+  "model": "gpt-5.4-mini",
+  "effort": "medium",
+  "input_tokens": 1045,
+  "output_tokens": 737,
+  "reasoning_tokens": 516,
+  "cost_usd": 0.0041,
+  "output": {
+    "criteria": [
+      {
+        "criterion_name": "Python",
+        "score": 5,
+        "justification": "Owned Python services and tooling with measurable impact, showing depth beyond mentions.",
+        "evidence": [
+          "Owned the billing service in Python and PostgreSQL. Cut checkout\nerrors by 40% after redesigning the retry pipeline.",
+          "Built internal tooling in Python."
+        ]
+      },
+      {
+        "criterion_name": "Postgres",
+        "score": 3,
+        "justification": "Shows PostgreSQL ownership on a production billing service, but no detail on modelling or tuning.",
+        "evidence": [
+          "Owned the billing service in Python and PostgreSQL. Cut checkout\nerrors by 40% after redesigning the retry pipeline."
+        ]
+      }
+    ],
+    "relevant_years_experience": 8.0,
+    "mandatory_requirements_met": true,
+    "missing_requirements": [],
+    "risks": [],
+    "detected_skills": [
+      "Python",
+      "PostgreSQL",
+      "Backend engineering",
+      "Billing systems",
+      "Retry pipelines",
+      "Monolith migration",
+      "Internal tooling"
+    ],
+    "summary": "Strong backend candidate with clear Python ownership and production PostgreSQL experience, plus measurable impact on checkout errors. No obvious gaps against the rubric."
+  }
+}

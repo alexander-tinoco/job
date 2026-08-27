@@ -319,9 +319,11 @@ Two findings from `docs/measurements.md` that the remaining phases must carry.
 ### 5.1.1 `reasoning.effort` is load-bearing, and its value is not yet settled
 
 `gpt-5.4-mini` is a reasoning model: reasoning tokens never appear in the response but are
-billed as output at $4.50/1M, and the model defaults to `medium`. Unset, a résumé costs about
-20× more for identical scores. `REASONING_EFFORT` is pinned to `low` in
-`app/ai/evaluator.py` and guarded by a test.
+billed as output at $4.50/1M, and the model defaults to `medium`. Measured, `medium` costs
+**1.79×** `low` — worth pinning, but an earlier claim in this document that it was "20×" was
+wrong and has been corrected (see the README). `REASONING_EFFORT` is pinned to `low` in
+`app/ai/evaluator.py` and guarded by a test, because a parameter that silently changes cost
+should be explicit.
 
 A first run appeared to show `low` resisting an injection that `medium` and `none` fell for.
 **A repeat of the identical request produced different scores, so that observation has been
