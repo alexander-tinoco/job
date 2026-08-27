@@ -1,15 +1,19 @@
 from collections.abc import Iterator
 
 import pytest
+from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import Session
 
+from app.api.deps import get_session
 from app.core.config import get_settings
 from app.db import models  # noqa: F401  -- import registers every table on Base
 from app.db.base import Base
+from app.main import app
 
 TEST_DB = "screening_test"
+ADMIN_TOKEN = "test-admin-token"
 
 
 def _test_database_url() -> str:
@@ -54,3 +58,21 @@ def session(engine: Engine) -> Iterator[Session]:
     if transaction.is_active:
         transaction.rollback()
     connection.close()
+
+
+@pytest.fixture
+def client(session: Session, monkeypatch: pytest.MonkeyPatch) -> Iterator[TestClient]:
+    """A client bound to the test transaction, with the admin guard configured."""
+    monkeypatch.setenv("ADMIN_TOKEN", ADMIN_TOKEN)
+    get_settings.cache_clear()
+
+    app.dependency_overrides[get_session] = lambda: session
+    with TestClient(app) as test_client:
+        yield test_client
+    app.dependency_overrides.clear()
+    get_settings.cache_clear()
+
+
+@pytest.fixture
+def auth() -> dict[str, str]:
+    return {"X-Admin-Token": ADMIN_TOKEN}

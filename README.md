@@ -26,7 +26,7 @@ npm install
 cd api
 uv venv --python 3.14
 uv pip install -e ".[dev]"
-cp ../.env.example ../.env      # then fill in OPENAI_API_KEY
+cp ../.env.example ../.env      # then fill in OPENAI_API_KEY and ADMIN_TOKEN
 uv run alembic upgrade head
 ```
 
@@ -36,6 +36,20 @@ uv run alembic upgrade head
 cd api
 .venv/bin/uvicorn app.main:app --reload    # http://localhost:8000/docs
 ```
+
+## Authentication
+
+Private endpoints are guarded by an `X-Admin-Token` header compared against `ADMIN_TOKEN`.
+This is a placeholder until real auth arrives in Phase 8. It **fails closed**: an unset
+`ADMIN_TOKEN` disables every private endpoint rather than leaving the CRUD open.
+
+```bash
+curl -H "X-Admin-Token: $ADMIN_TOKEN" localhost:8000/api/v1/openings
+```
+
+The public opening page (`GET /openings/{slug}`) needs no token and never exposes
+`company_context` or the rubric — publishing the scoring criteria would tell candidates
+exactly what to write.
 
 ## Tests
 
