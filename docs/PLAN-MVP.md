@@ -46,7 +46,7 @@ caps the main attack vector (§6).
 | Database | **PostgreSQL 16, no extensions** | Panel search uses `tsvector`, which ships with it |
 | Résumé extraction | **PyMuPDF, no AI.** Tesseract as fallback only | Deterministic, free, and seeing the raw PDF is what makes hidden-text detection possible (§6) |
 | Evaluation context | **Prompt engineering, no RAG** | See §4 |
-| Model | **`gpt-5.4-mini`** | Not `nano`: injection resistance scales with capability, and the saving would be ~$1 per opening (§6) |
+| Model | **`gpt-5.6-luna`** at `reasoning.effort: low` | Changed from `gpt-5.4-mini` on 2026-08-27 after measurement: 27 % of the cost, flagship family rather than the mini line. Quality against a human ranking is unverified and is Phase 6's job (§5.1.1) |
 | Processing | **Batch API** (−50 %) in batches **every 6 h**, queue in Postgres | Same price as one big batch, and HR sees results the same day instead of only at close (§4.1) |
 | Email delivery | **Resend** | Simple API, generous free tier, good deliverability without owning SMTP infrastructure |
 | API + DB + worker hosting | **Railway** | Postgres, API and worker in one project. With a queue there are no spikes to absorb, so the small plan is plenty |
@@ -112,7 +112,7 @@ Per evaluation (a single call per candidate):
 | Path | Per résumé | **500 résumés** |
 |---|---|---|
 | Standard API + caching | $0.0048 | $2.38 |
-| **Batch API** (recommended, `effort: low`) | **$0.0025** | **$1.23** |
+| **Batch API** (recommended, `gpt-5.6-luna` at `effort: low`) | **$0.0003** | **$0.16** |
 
 ### Total monthly cost per client
 

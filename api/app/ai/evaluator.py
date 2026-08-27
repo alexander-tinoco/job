@@ -21,10 +21,17 @@ _PROMPT_PATH = Path(__file__).parent / "prompts" / f"{PROMPT_VERSION}.md"
 # Room for a long structured answer without risking a truncated one.
 MAX_OUTPUT_TOKENS = 4000
 
-# Explicit, and not an optimisation to be tidied away later. gpt-5.4-mini is a
-# reasoning model: reasoning tokens are invisible in the response but billed as
-# output, and the model defaults to "medium". Leaving it unset cost roughly 20x
-# more per résumé for identical scores in measurement (see docs/measurements).
+# Explicit, and not an optimisation to be tidied away later. Reasoning tokens
+# are invisible in the response but billed as output, and the model defaults to
+# "medium" — a parameter that silently changes cost should be pinned.
+#
+# `low` is not simply the cheap option. Measured across three identical runs per
+# level, raising the effort did not reduce score variance at any level, and it
+# systematically lowered one criterion (Postgres 3,3,3 at low against 2,2,1 at
+# high). More reasoning changes the calibration rather than sharpening it, and
+# `low` is both the most consistent setting and the one that agrees with the
+# previous model's reading. See docs/measurements.md.
+#
 # Supported values here are none | low | medium | high | xhigh.
 REASONING_EFFORT: ReasoningEffort = "low"
 

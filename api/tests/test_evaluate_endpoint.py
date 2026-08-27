@@ -9,6 +9,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from app.ai.client import MODEL_ID
 from app.ai.schema import EvaluationOutput
 from app.db.models import Application, Evaluation
 from app.db.types import ApplicationState
@@ -59,7 +60,7 @@ def test_evaluating_persists_the_score_and_the_provenance(
 
     assert response.status_code == 201
     body = response.json()
-    assert body["model_id"] == "gpt-5.4-mini"
+    assert body["model_id"] == MODEL_ID
     assert body["prompt_version"] == "evaluator.v1"
     assert body["rubric_version"] == 1
 

@@ -196,3 +196,10 @@ def test_reasoning_effort_is_set_explicitly() -> None:
 
     assert REASONING_EFFORT in {"none", "low", "medium", "high", "xhigh"}
     assert REASONING_EFFORT == "low"
+
+
+def test_the_model_is_the_one_we_measured() -> None:
+    """Changing this is the owner's decision, not a cleanup (CLAUDE.md)."""
+    from app.ai.client import MODEL_ID
+
+    assert MODEL_ID == "gpt-5.6-luna"

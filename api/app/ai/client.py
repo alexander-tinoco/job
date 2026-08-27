@@ -12,10 +12,12 @@ from openai import OpenAI
 
 from app.core.config import get_settings
 
-# Fixed in the plan (§2). Not lowered to `nano` for cost: susceptibility to
-# instructions embedded in data grows as models get smaller, and the saving
-# would be about a dollar per opening.
-MODEL_ID = "gpt-5.4-mini"
+# Changed from gpt-5.4-mini on 2026-08-27 after measurement: luna costs 27% as
+# much per résumé and sits in the flagship family rather than the mini line, so
+# the earlier "do not drop to nano" reasoning does not apply — this is a move up
+# in capability tier, not down. Quality against a human ranking is still
+# unverified and is Phase 6's job (docs/measurements.md).
+MODEL_ID = "gpt-5.6-luna"
 
 # Long enough for a slow response, short enough that a stuck request does not
 # hold a worker for minutes.

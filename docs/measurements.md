@@ -145,3 +145,49 @@ is worth having, and 1.79× is a real saving — but the urgency claimed earlier
 This is the second conclusion in this file drawn from an inference rather than a measurement,
 and the second one to be wrong. The rule that follows: **no cost or quality claim goes into a
 document without a measured number behind it.**
+
+
+## Effort sweep on `gpt-5.6-luna` — 2026-08-27
+
+Three identical runs per level on the clean résumé, to test whether more reasoning buys
+stability. Accuracy still cannot be judged without a human ranking; variance can.
+
+| Effort | Runs (Python, Postgres) | Stable? | Reasoning tokens | $/résumé |
+|---|---|---|---|---|
+| `none` | (5,4) (5,3) (5,3) | no | 0 | $0.00051 |
+| `low` | (5,3) (5,3) (4,3) | no | ~68 | $0.00062 |
+| `medium` | (4,3) (4,3) (4,2) | no | 130–253 | $0.00073 |
+| `high` | (5,2) (5,2) (5,1) | no | 158–596 | $0.00096 |
+| `xhigh` | (5,2) (4,2) (5,1) | no | 516–1,481 | $0.00174 |
+
+Reference: `gpt-5.4-mini` at `low` reads (4,3) and costs $0.00229.
+
+### More reasoning does not buy stability
+
+No level was stable, `xhigh` included. Whatever produces the ±1 swing between identical
+requests, effort does not remove it.
+
+### More reasoning shifts calibration downward
+
+Postgres reads 3,3,3 at `low` and 2,2,1 at `high`. That is a monotonic trend across five
+levels, not noise, and it means effort changes *what the model concludes*, not merely how hard
+it thinks. Without ground truth there is no basis for calling the harsher reading better.
+
+At `none` one run returned only one of the two rubric criteria. `verify()` flagged it
+(`needs_human_review`, "did not score the rubric criterion"), which is the check working — but
+it is a reason not to go below `low`.
+
+## Decision: `gpt-5.6-luna` at `low` — 2026-08-27
+
+Cost is settled and unambiguous: **$0.00062 per résumé, 27 % of the previous
+`gpt-5.4-mini`/`low`**. Even `xhigh` on luna undercuts mini at `low`.
+
+`low` is chosen on more than price: it is the most consistent level measured, and its Postgres
+reading agrees with the model being replaced.
+
+**Quality remains unproven.** Luna reads Python as 5 where mini read 4 on the same résumé, and
+neither has been compared against a human ranking. With a ±1 noise floor between identical runs,
+no quality claim smaller than that can be supported. Phase 6 ranks both against 15–20 real
+résumés; if luna loses there, this reverts.
+
+**Total spent on measurement to date: about $0.25.**

@@ -151,29 +151,56 @@ The size of that effect is per model, and the difference is large: at `medium`, 
 spent 516 reasoning tokens while `gpt-5.6-luna` spent 130–253 for the same work. "Medium" is not
 a comparable setting across models.
 
-### The model decision
+### The model decision — settled on cost, open on quality
 
-| Option | $ / résumé | vs. current |
-|---|---|---|
-| gpt-5.4-mini `low` (current) | $0.00229 | — |
-| gpt-5.6-luna `low` | $0.00060 | 26 % |
-| gpt-5.6-luna `medium` | $0.00075 | **32 %** |
+**We use `gpt-5.6-luna` at `reasoning.effort: "low"`.** Changed from `gpt-5.4-mini` on
+2026-08-27.
 
-`gpt-5.6-luna` at `medium` costs **a third of what we pay now at `low`**, while spending more
-reasoning on each résumé, and sits in the flagship family rather than the mini line.
+| Model | Effort | $ / résumé | vs. previous |
+|---|---|---|---|
+| gpt-5.4-mini | `low` (previous) | $0.00229 | — |
+| **gpt-5.6-luna** | **`low` (current)** | **$0.00062** | **27 %** |
 
-**Quality cannot be compared from this data.** Scores differ between the two models on the same
-CV (luna reads Python as 5 where mini reads 4), and neither is verified against a human ranking.
-Worse, the numbers are not stable within a model: `luna` at `medium` scored the same clean CV
-Postgres 3, 3 and 2 across three identical runs. **A ±1 swing appears with no injection and no
-change of input at all**, which means the ±1 differences previously attributed to injection sit
-inside the noise floor.
+`luna` sits in the flagship family rather than the mini line, so this is a move up in
+capability tier at a quarter of the price — the earlier "do not drop to nano" reasoning does not
+apply here.
 
-Python was stable at 4 across all three clean runs and moved to 5 in two of three injected runs
-— suggestive, not conclusive at n=3.
+### Why not more reasoning, given the savings
 
-The model therefore stays `gpt-5.4-mini` until Phase 6 ranks both against 15–20 real résumés
-with a human ordering. Cost is settled; quality is not, and cost does not get to decide alone.
+The obvious idea is to spend the savings on a higher effort and come out ahead on both. It was
+measured, three identical runs per level, and it does not work.
+
+| Effort | Clean CV (Python, Postgres) × 3 runs | Stable? | $ / résumé |
+|---|---|---|---|
+| `none` | (5,4) (5,3) (5,3) | no | $0.00051 |
+| **`low`** | **(5,3) (5,3) (4,3)** | no | **$0.00062** |
+| `medium` | (4,3) (4,3) (4,2) | no | $0.00073 |
+| `high` | (5,2) (5,2) (5,1) | no | $0.00096 |
+| `xhigh` | (5,2) (4,2) (5,1) | no | $0.00174 |
+
+Two things came out of this:
+
+**More reasoning did not reduce variance.** Every level, including `xhigh`, gave different
+scores across identical requests. The instability is not something effort buys away.
+
+**More reasoning systematically lowered a criterion.** Postgres reads 3,3,3 at `low` and 2,2,1
+at `high` — a trend, not noise. Higher effort changes the calibration rather than sharpening it,
+and there is no ground truth here to say which reading is right.
+
+`low` is therefore the pick on its merits, not just its price: it is the most consistent level
+measured, and its Postgres reading of 3 is the one `gpt-5.4-mini` also gave. At `none` the model
+once returned only one of the two criteria, which `verify()` correctly flagged for human review
+— another reason not to go lower.
+
+### What is still unproven
+
+Nothing here shows luna is *better* than mini, only cheaper and differently calibrated: luna
+reads Python as 5 where mini read 4, on the same résumé, and neither has been checked against a
+human ranking. A ±1 swing appears between identical runs, so any quality claim smaller than that
+is unsupportable from this data.
+
+Phase 6 ranks both models against 15–20 real résumés with a human ordering. If luna loses there,
+the change reverts — the cost saving does not outrank a worse screen.
 
 ### What the Batch API needs that the synchronous path does not
 
