@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.db.models import Application, IntegrityReport, ResumeDocument
 from app.db.types import ApplicationState, IntegrityVerdict
 from app.ingest.pipeline import ExtractionError, ExtractionResult, extract
+from app.services.queue import enqueue
 
 logger = logging.getLogger(__name__)
 
@@ -78,4 +79,8 @@ def ingest_application(session: Session, application: Application) -> IntegrityR
     )
     session.add(report)
     application.state = ApplicationState.EXTRACTED
+    # Queued here rather than on upload: an application with no usable text has
+    # nothing to evaluate, and a queue row for it would only fail three times.
+    if result.visible_text.strip():
+        enqueue(session, application)
     return report

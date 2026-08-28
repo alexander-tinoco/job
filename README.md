@@ -225,10 +225,15 @@ Batch is not "the same request with a flag". Four differences, all of which Phas
 
 1. **No `text_format`.** `client.responses.parse(text_format=Model)` does not exist on the batch
    path. The request body carries a raw JSON Schema under `text.format`.
-2. **The Pydantic schema has to be flattened.** `model_json_schema()` emits `$defs` and `$ref`,
-   which `strict: true` rejects. Without flattening, the batch path silently loses layer 2 of
-   the anti-injection design — in exactly the place production runs. Phase 7 deliverable with
-   its own acceptance criterion.
+2. **The Pydantic schema has to be hardened.** `model_json_schema()` omits
+   `additionalProperties: false`, and strict mode refuses a schema without it:
+   *"In context=(), 'additionalProperties' is required to be supplied and to be false"*.
+   `app/ai/batch_schema.py` adds it to every object, root and `$defs` alike, and makes every
+   property required. Without that the batch path silently loses layer 2 of the anti-injection
+   design — in exactly the place production runs.
+
+   An earlier version of this file said `$defs`/`$ref` had to be flattened away. **That was
+   wrong**: strict mode accepts them, verified against the API. The real gap was much smaller.
 3. **A different call sequence.** Build JSONL of `{custom_id, method, url, body}` →
    `files.create(purpose="batch")` → `batches.create(endpoint="/v1/responses")` → poll →
    `files.content(output_file_id)`. Results come back **in any order**; key them by `custom_id`,
@@ -240,6 +245,30 @@ Batch is not "the same request with a flag". Four differences, all of which Phas
 **Turnaround is not fast, even when tiny.** A three-request batch stayed `in_progress` for over
 forty minutes in measurement. The window is 24 h and not configurable. This is why the panel says
 "evaluation in progress" and never a time, and why the synchronous "evaluate now" button exists.
+
+## Background processing
+
+Applications are queued for evaluation as soon as extraction produces usable text. The scheduler
+runs two separate jobs (see plan §4.1):
+
+- **Send** at 00:00, 06:00, 12:00 and 18:00, or immediately once 50 applications are waiting.
+- **Collect** hourly, because a batch can finish anywhere inside its 24-hour window.
+
+The queue lives in Postgres and is claimed with `SELECT ... FOR UPDATE SKIP LOCKED`, which is
+what makes two workers safe without a locking protocol — and what keeps Redis and Celery out of
+the deployment.
+
+The **enqueued-token limit is discovered at runtime, not read from a dashboard**. The scheduler
+starts from a working budget, and when the API rejects a send for exceeding the limit it halves
+the budget and retries next tick. That stays correct whatever usage tier the account is on, and
+survives the account changing tier.
+
+A row is retried up to three times. After that it is marked failed and its application moves to
+`error` state — visible in the panel, because a candidate whose evaluation failed still needs to
+be seen rather than silently dropped.
+
+**The worker is off by default.** `WORKER_ENABLED=true` switches it on; anything else leaves it
+stopped. A loop that starts by accident spends real money.
 
 ## Tests
 

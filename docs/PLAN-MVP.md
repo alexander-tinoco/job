@@ -341,11 +341,15 @@ single sample, a cost advantage does not get to decide on its own. Phase 6 evalu
 ### 5.1.2 The batch path needs its own schema work
 
 `responses.parse(text_format=Model)` is not available on the Batch API. Batch requests carry a
-raw JSON Schema in `text.format`, and the schema Pydantic generates uses `$defs` and `$ref`,
-which `strict: true` does not accept. **Flattening that schema is Phase 7 work that was not in
-the original estimate**, and it is not optional: without `strict: true` the batch path loses
-layer 2 of the anti-injection design (§6) while the synchronous path keeps it — the worst
-possible split, since batch is what production actually uses.
+raw JSON Schema in `text.format`, and Pydantic's schema omits `additionalProperties: false`,
+which strict mode requires on every object. `app/ai/batch_schema.py` adds it.
+
+**Correction:** this section previously said `$defs` and `$ref` had to be flattened away.
+Verified against the API, strict mode accepts them; the real gap was only the missing
+`additionalProperties`. The diagnosis was wrong and the work was smaller than estimated. What
+was right is that it is not optional: without `strict: true` the batch path loses layer 2 of the
+anti-injection design (§6) while the synchronous path keeps it — the worst possible split, since
+batch is what production actually uses.
 
 ### 5.1.3 Batch turnaround is not fast, even when tiny
 
@@ -523,7 +527,7 @@ explicit authorization. The working cycle is in `CLAUDE.md`.
 | 4 | Extraction & sanitization | PyMuPDF visible/total, hidden spans, OCR fallback, patterns, `IntegrityReport`. **No AI** | Fixture with white-on-white text → `visible_text` excludes it and the report locates it |
 | 5 | Evaluator | OpenAI client, versioned prompts, `Evaluation` with strict JSON, quote verification, weighted score. **Synchronous** | Reproducible evaluation on a fixture résumé; a fabricated quote triggers review; Python computes the score |
 | 6 | **Validation & calibration** — *done, see §5.1.5* | Ten synthetic candidates across ten layouts, three runs per model; effort sweep; injection measured end to end | ρ +0.976 for luna against the key; effort and model decided on numbers; injection deflated rather than inflated; zero unverified quotes in 66 runs |
-| 7 | Batch, queue & scheduler | `job_queue`, `asyncio` worker, send every 6 h + trigger at 50 pending, hourly collect, sub-batch splitting by enqueued-token limit, retries, "evaluate now" button, **and a flattened JSON Schema for the batch path (§6.2)** | 50 fixture résumés in one batch; hitting 50 pending sends off-slot; an oversized send splits itself; a partial failure loses nothing; **the batch path uses `strict: true`, verified against a request that would break the schema** |
+| 7 | Batch, queue & scheduler | `job_queue`, `asyncio` worker, send every 6 h + trigger at 50 pending, hourly collect, sub-batch splitting by enqueued-token limit, retries, "evaluate now" button, **and a hardened JSON Schema for the batch path (§5.1.2)** | 50 fixture résumés in one batch; hitting 50 pending sends off-slot; an oversized send splits itself; a partial failure loses nothing; **the batch path uses `strict: true`, verified against a request that would break the schema** |
 | 8 | HR panel | `web/` app: ranking, profile, résumé viewer, evidence clickable to offset, flags, per-candidate state, full-text search, shortlist/reject | Full walkthrough against the real API; a candidate in `extracted` already shows résumé and flags with no score |
 | 9 | Close & outreach | Opening close, email drafts, sending via Resend after approval | No email leaves without a recorded explicit approval |
 | 10 | Compliance & data lifecycle | `AuditLog`, CSV export, 6-month retention job, access/erasure endpoints | Retention deletes on schedule; erasure by email removes résumé, evaluation and PII while keeping anonymized audit records |

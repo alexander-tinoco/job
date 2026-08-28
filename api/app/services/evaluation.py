@@ -14,6 +14,7 @@ from app.ai.evaluator import (
     RubricCriterion,
     evaluate,
 )
+from app.ai.schema import EvaluationOutput
 from app.ai.verify import VerifiedEvaluation, verify
 from app.db.models import Application, CriterionScore, Evaluation
 from app.db.types import ApplicationState
@@ -50,10 +51,21 @@ def build_request(application: Application) -> EvaluationRequest:
 
 
 def evaluate_application(session: Session, application: Application) -> Evaluation:
-    """One AI call, then Python decides the number that orders the ranking."""
+    """Synchronous path: one AI call, then persist."""
     request = build_request(application)
-    output = evaluate(request)
+    return persist_evaluation(session, application, evaluate(request))
 
+
+def persist_evaluation(
+    session: Session, application: Application, output: EvaluationOutput
+) -> Evaluation:
+    """Verify, score and store. Shared by the synchronous and batch paths.
+
+    Everything that decides the ranking happens here, in Python: quotes are
+    checked against the résumé and the weights produce the overall score (plan
+    §6, layers 3 and 4). The batch path must not skip any of it.
+    """
+    request = build_request(application)
     weights = {c.name: c.weight for c in application.opening.criteria}
     verified: VerifiedEvaluation = verify(output, request.resume_text, weights)
 
