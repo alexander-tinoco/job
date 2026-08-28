@@ -36,12 +36,28 @@ run with `ADMIN_TOKEN=... docker compose up -d`.
 ### Something to look at
 
 ```bash
-cd api && ADMIN_TOKEN=<yours> .venv/bin/python scripts/seed_demo.py
+# A user to sign in with
+docker compose exec api python -m app.cli create-user demo@acme.com "Ana Ruiz"
+
+# Ten candidates, uploaded through the real public endpoint and evaluated
+cd api && .venv/bin/python scripts/seed_demo.py
 ```
 
-Uploads the ten golden-set résumés through the real public endpoint and evaluates them — about
-a cent. It includes the tampered copy, which is the interesting row: it scores identically to
-its clean twin, because the hidden text was stripped before anything was evaluated.
+The seed uploads the ten golden-set résumés and evaluates them — about a cent. It includes the
+tampered copy, which is the interesting row: **it scores identically to its clean twin**,
+because the hidden text was stripped before anything was evaluated.
+
+#### Local demo credentials
+
+| | |
+|---|---|
+| Email | `demo@acme.com` |
+| Password | `correct-horse-battery` |
+
+**These are for the local compose stack and nothing else.** They are written here because the
+stack is worthless to look at without a way in, and they open a database of invented candidates
+on `localhost`. A deployment creates its own account with `app.cli create-user` and a real
+password; nothing in this repository ships a default login.
 
 ## Local development
 
