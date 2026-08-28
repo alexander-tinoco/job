@@ -244,6 +244,31 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Sharing a shortlist
+
+Whoever screens is rarely whoever decides. Without a way to show a hiring manager the shortlist,
+the only option is handing them a password.
+
+```
+POST   /api/v1/openings/{id}/share   mint a link; the token is returned once
+GET    /api/v1/openings/{id}/share   list the links and their view counts
+DELETE /api/v1/share/{id}            revoke one immediately
+GET    /api/v1/shared/{token}        the read-only view — no session
+```
+
+**Here the token is the credential**, unlike the panel's path. So it is 256 bits of randomness,
+only its SHA-256 is stored, it expires (14 days by default, 90 maximum), and it can be revoked.
+A dump of `share_links` grants nobody a view.
+
+What the link shows: shortlisted candidates, their scores, the criteria and the quoted evidence,
+and the résumé. What it never shows: **email, phone, LinkedIn, everyone who was declined, the
+reviewer's reason, and the audit trail.** There is no control on that page that writes anything.
+
+An unknown token and an expired one answer identically — distinguishing them would tell a
+guesser they had found something real. Views are counted; readers are not identified, because
+knowing a link was opened is useful and knowing who opened it is surveillance nobody asked for.
+Every response carries `X-Robots-Tag: noindex`.
+
 ## Retention, access and erasure
 
 The application page tells a candidate their résumé is deleted six months after the opening

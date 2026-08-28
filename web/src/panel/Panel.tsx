@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Confirm } from "../components/Confirm";
-import { CollapseIcon, ExpandIcon, SignOutIcon } from "../components/icons";
+import { CollapseIcon, ExpandIcon, ShareIcon, SignOutIcon } from "../components/icons";
 import type { User } from "../lib/api";
 import { Unauthorized, api } from "../lib/api";
 import type { ApplicationDetail, Opening, RankedPage } from "../lib/types";
@@ -28,6 +28,8 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const [shareUrl, setShareUrl] = useState<string | null>(null);
+  const [sharing, setSharing] = useState(false);
   const plate = useRef<HTMLDivElement>(null);
 
   const fail = useCallback(
@@ -122,6 +124,26 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
           <div className="masthead-top">
             <span className="wordmark-sm">Verbatim</span>
             <span className="spacer" />
+            <button
+              className="control quiet"
+              title="Create a read-only link to the shortlist"
+              aria-label="Share the shortlist"
+              disabled={!openingId || sharing}
+              onClick={async () => {
+                if (!openingId) return;
+                setSharing(true);
+                try {
+                  const made = await api.share(openingId);
+                  setShareUrl(`${window.location.origin}${made.url_path}`);
+                } catch (caught) {
+                  fail(caught);
+                } finally {
+                  setSharing(false);
+                }
+              }}
+            >
+              <ShareIcon />
+            </button>
             <button
               className="control quiet"
               title="Hide the list and read one application"
@@ -233,6 +255,10 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
         )}
       </div>
 
+      {shareUrl && (
+        <ShareMade url={shareUrl} onClose={() => setShareUrl(null)} />
+      )}
+
       <Confirm
         open={confirmingSignOut}
         title="Sign out of Verbatim?"
@@ -242,6 +268,39 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
         onCancel={() => setConfirmingSignOut(false)}
         onConfirm={() => api.logout().finally(onSignedOut)}
       />
+    </div>
+  );
+}
+
+
+function ShareMade({ url, onClose }: { url: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false);
+
+  return (
+    <div className="share-made" role="status">
+      <p className="share-made-title">A read-only link to the shortlist</p>
+      <p className="hint">
+        Anyone with it can read the shortlist and the evidence, and nothing else. It expires in
+        fourteen days. <strong>Copy it now</strong> — it is stored hashed and cannot be shown
+        again.
+      </p>
+      <div className="share-made-row">
+        <input className="field num" readOnly value={url} onFocus={(e) => e.target.select()} />
+        <button
+          className="control"
+          onClick={() => {
+            navigator.clipboard?.writeText(url).then(
+              () => setCopied(true),
+              () => setCopied(false),
+            );
+          }}
+        >
+          {copied ? "Copied" : "Copy"}
+        </button>
+        <button className="control quiet" onClick={onClose}>
+          Done
+        </button>
+      </div>
     </div>
   );
 }

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
  * `/`            the public site
  * `/apply/{slug}` an opening — shared on LinkedIn, so it stays clean and readable
  * `/{panel}`      sign-in and the review panel
+ * `/shared/{token}` a read-only shortlist for someone without an account
  *
  * The panel's segment comes from the build, so a deployment can choose its own
  * and never link to it. That keeps the admin surface out of sight and out of
@@ -19,6 +20,7 @@ export type Route =
   | { name: "panel" }
   | { name: "apply"; slug: string }
   | { name: "applied"; slug: string; reference: string }
+  | { name: "shared"; token: string }
   | { name: "missing" };
 
 export function parse(pathname: string): Route {
@@ -33,6 +35,10 @@ export function parse(pathname: string): Route {
   }
   const apply = path.match(/^\/apply\/([^/]+)$/);
   if (apply?.[1]) return { name: "apply", slug: apply[1] };
+
+  // The token is the credential, so it is long and never guessed.
+  const shared = path.match(/^\/shared\/([A-Za-z0-9_-]{20,})$/);
+  if (shared?.[1]) return { name: "shared", token: shared[1] };
 
   return { name: "missing" };
 }

@@ -53,3 +53,10 @@ class OutreachState(enum.StrEnum):
     DRAFT = "draft"
     SENT = "sent"
     FAILED = "failed"
+
+
+class ShareScope(enum.StrEnum):
+    """What a share link exposes."""
+
+    SHORTLIST = "shortlist"
+    OPENING = "opening"

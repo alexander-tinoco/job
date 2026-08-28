@@ -440,3 +440,48 @@ dialog.confirm p { font-size: 13.5px; line-height: 1.6; color: var(--graphite); 
   .tamper-pair, .cost-figures { grid-template-columns: 1fr; }
   .hero { padding-top: 58px; }
 }
+
+/* ─── The shared, read-only shortlist ─── */
+
+.shared { max-width: 960px; margin: 0 auto; padding: 40px 30px 80px; }
+.shared-top { display: flex; align-items: flex-end; gap: 24px; flex-wrap: wrap;
+  padding-bottom: 18px; border-bottom: 1px solid var(--hairline-strong); margin-bottom: 6px; }
+.shared-company { font: 500 13px/1 var(--sans); color: var(--graphite); margin: 0 0 7px; }
+.shared-role { font: 600 27px/1.15 var(--serif); letter-spacing: -0.018em; margin: 0; }
+.shared-meta { margin-left: auto; font-size: 12.5px; color: var(--graphite); }
+
+.shared-list { list-style: none; margin: 0; padding: 0; }
+.shared-list > li { border-bottom: 1px solid var(--hairline); }
+.shared-row {
+  display: grid; grid-template-columns: 40px 1fr auto; gap: 14px; align-items: baseline;
+  width: 100%; text-align: left; background: none; border: 0; padding: 16px 0;
+  transition: background 140ms var(--lift);
+}
+.shared-row:hover { background: #f6f3ed; }
+.shared-rank { font-size: 12px; color: var(--graphite); }
+.shared-name { font: 500 16px/1.35 var(--sans); }
+.shared-score { font-size: 20px; }
+
+.shared-detail { padding: 4px 0 26px 54px; max-width: 74ch; }
+.shared-summary { font: 400 15px/1.6 var(--serif); margin: 0 0 4px; }
+.shared-finding { padding: 14px 0; border-top: 1px solid var(--hairline); }
+.shared-finding:first-of-type { margin-top: 14px; }
+
+.shared-foot { margin-top: 34px; padding-top: 16px; border-top: 1px solid var(--hairline);
+  font-size: 12.5px; line-height: 1.6; color: var(--graphite); max-width: 68ch; }
+
+@media (max-width: 760px) {
+  .shared { padding: 26px 20px 60px; }
+  .shared-detail { padding-left: 0; }
+  .shared-meta { margin-left: 0; }
+}
+
+.share-made {
+  position: fixed; right: 20px; bottom: 20px; z-index: 6; max-width: 460px;
+  background: var(--sheet); border: 1px solid var(--hairline-strong); border-radius: 4px;
+  padding: 16px 18px;
+  box-shadow: 0 2px 4px rgba(26,24,21,.06), 0 20px 44px -22px rgba(26,24,21,.34);
+}
+.share-made-title { font: 600 14px/1.3 var(--sans); margin: 0 0 5px; }
+.share-made-row { display: flex; gap: 7px; margin-top: 11px; }
+.share-made-row .field { flex: 1; font-size: 11.5px; padding: 7px 9px; }

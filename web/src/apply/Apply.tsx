@@ -49,7 +49,7 @@ export function Apply({ slug }: { slug: string }) {
           {opening.closes_at && (
             <p className="apply-meta">
               Applications close{" "}
-              {new Date(opening.closes_at).toLocaleDateString(undefined, {
+              {new Date(opening.closes_at).toLocaleDateString("en-GB", {
                 day: "numeric",
                 month: "long",
               })}

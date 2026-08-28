@@ -88,3 +88,12 @@ export const ExpandIcon = () => (
     <path d="M10.9 5.3 13.6 8l-2.7 2.7" />
   </svg>
 );
+
+
+export const ShareIcon = () => (
+  <svg {...base}>
+    <path d="M11 5.2 8 2.2 5 5.2" />
+    <path d="M8 2.2v8.4" />
+    <path d="M3.4 9.2v3.2a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V9.2" />
+  </svg>
+);

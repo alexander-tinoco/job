@@ -14,6 +14,7 @@ from app.api.v1 import (
     outreach,
     panel,
     public,
+    sharing,
 )
 from app.core.config import get_settings
 from app.db.session import SessionLocal
@@ -48,6 +49,7 @@ app.include_router(evaluations.router)
 app.include_router(panel.router)
 app.include_router(outreach.router)
 app.include_router(lifecycle.router)
+app.include_router(sharing.router)
 
 
 @app.get("/health")

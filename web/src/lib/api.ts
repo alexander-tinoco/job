@@ -73,6 +73,13 @@ export const api = {
 
   openings: () => request<Opening[]>("/api/v1/openings"),
 
+  /** Mints a read-only link. The token is returned once and never again. */
+  share: (openingId: string, days = 14) =>
+    request<{ url_path: string; link: { id: string; expires_at: string } }>(
+      `/api/v1/openings/${openingId}/share`,
+      { method: "POST", body: JSON.stringify({ scope: "shortlist", days }) },
+    ),
+
   ranked: (openingId: string, limit = 100) =>
     request<RankedPage>(
       `/api/v1/openings/${openingId}/applications?limit=${limit}`,

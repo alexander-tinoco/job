@@ -4,6 +4,7 @@ import type { User } from "./lib/api";
 import { PasswordField } from "./components/PasswordField";
 import { RateLimited, api } from "./lib/api";
 import { navigate, useRoute } from "./lib/router";
+import { Shared } from "./shared/Shared";
 import { Home } from "./site/Home";
 import { Panel } from "./panel/Panel";
 
@@ -32,6 +33,7 @@ export default function App() {
   if (route.name === "home") return <Home />;
   if (route.name === "apply") return <Apply slug={route.slug} />;
   if (route.name === "applied") return <Received reference={route.reference} />;
+  if (route.name === "shared") return <Shared token={route.token} />;
   if (route.name === "missing") return <NotFound />;
   if (checking) return <p className="empty">Loading…</p>;
   if (!me) return <SignIn onDone={setMe} />;

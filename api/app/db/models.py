@@ -31,6 +31,7 @@ from app.db.types import (
     OutreachKind,
     OutreachState,
     QueueState,
+    ShareScope,
     uuid7,
 )
 
@@ -43,6 +44,7 @@ DECISION_KIND = Enum(DecisionKind, name="decision_kind", native_enum=True)
 QUEUE_STATE = Enum(QueueState, name="queue_state", native_enum=True)
 OUTREACH_KIND = Enum(OutreachKind, name="outreach_kind", native_enum=True)
 OUTREACH_STATE = Enum(OutreachState, name="outreach_state", native_enum=True)
+SHARE_SCOPE = Enum(ShareScope, name="share_scope", native_enum=True)
 
 
 def _pk() -> Mapped[uuid.UUID]:
@@ -423,3 +425,37 @@ class OutreachDraft(Base, TimestampMixin):
     last_error: Mapped[str | None] = mapped_column(Text)
 
     application: Mapped[Application] = relationship(back_populates="outreach")
+
+
+class ShareLink(Base, TimestampMixin):
+    """A read-only view of an opening for someone without an account.
+
+    Whoever screens is rarely whoever decides. Without this the only way to show
+    a hiring manager the shortlist is to hand them a password.
+
+    Unlike the panel's URL, **this token is the credential**, so it is 256 bits
+    of randomness and only its hash is stored: a dump of this table grants
+    nobody a view. It expires, it can be revoked, and it can do nothing but
+    read.
+    """
+
+    __tablename__ = "share_links"
+
+    id: Mapped[uuid.UUID] = _pk()
+    job_opening_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("job_openings.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    scope: Mapped[ShareScope] = mapped_column(
+        SHARE_SCOPE, nullable=False, default=ShareScope.SHORTLIST
+    )
+    label: Mapped[str] = mapped_column(String(200), nullable=False, default="")
+    created_by: Mapped[str] = mapped_column(String(200), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    # Counted rather than logged: knowing a link was opened is useful, knowing
+    # who opened it is surveillance nobody asked for.
+    view_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
+    last_viewed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    opening: Mapped[JobOpening] = relationship()
