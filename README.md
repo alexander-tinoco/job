@@ -196,6 +196,39 @@ pipeline degrades, it does not break.
 sudo apt install tesseract-ocr tesseract-ocr-spa
 ```
 
+## Closing an opening and writing to candidates
+
+Close the opening, draft, read, send. Four steps, and the last one is a person.
+
+```
+POST /api/v1/openings/{id}/close        the opening stops accepting applications
+POST /api/v1/openings/{id}/outreach     drafts one email per decided candidate
+PATCH /api/v1/outreach/{id}             rewrite it
+POST /api/v1/outreach/{id}/send         the only call that sends anything
+```
+
+**Drafting requires the opening to be closed.** Drafting mid-round invites declining someone the
+round would have reconsidered.
+
+**The emails come from templates**, versioned in `app/outreach/templates/` beside the evaluator's
+prompts, with merge fields filled by Python. **Not written by a model** — and not for cost, since
+one call per shortlisted candidate is five or ten per opening. A generated email invents, and
+"we were impressed by your work on X" is exactly the sentence a model produces and exactly the
+sentence that is wrong when X is not in the résumé. It goes out over the client's name to
+somebody who did not get the job.
+
+The decline says the decision was made by a person and that the résumé is deleted in six months
+unless they ask sooner. That is the product's position and what keeps it out of GDPR art. 22.
+
+**Sending takes a name and records it**, along with the template version, in `AuditLog`. The
+audit entry carries no recipient address and no body: it records that a person approved a send,
+not the contents of somebody's rejection. A sent message can no longer be edited, and sending
+twice is refused.
+
+With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the approval and
+dropping the message. A product that silently swallows rejection emails is worse than one that
+cannot send them.
+
 ## Cost
 
 Everything below is measured, not estimated. Reproduce with the scripts in `api/scripts/`;

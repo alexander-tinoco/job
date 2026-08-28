@@ -28,6 +28,8 @@ from app.db.types import (
     DecisionKind,
     IntegrityVerdict,
     OpeningStatus,
+    OutreachKind,
+    OutreachState,
     QueueState,
     uuid7,
 )
@@ -39,6 +41,8 @@ INTEGRITY_VERDICT = Enum(IntegrityVerdict, name="integrity_verdict", native_enum
 OPENING_STATUS = Enum(OpeningStatus, name="opening_status", native_enum=True)
 DECISION_KIND = Enum(DecisionKind, name="decision_kind", native_enum=True)
 QUEUE_STATE = Enum(QueueState, name="queue_state", native_enum=True)
+OUTREACH_KIND = Enum(OutreachKind, name="outreach_kind", native_enum=True)
+OUTREACH_STATE = Enum(OutreachState, name="outreach_state", native_enum=True)
 
 
 def _pk() -> Mapped[uuid.UUID]:
@@ -149,6 +153,9 @@ class Application(Base, TimestampMixin):
         back_populates="application", cascade="all, delete-orphan", uselist=False
     )
     decision: Mapped[HumanDecision | None] = relationship(
+        back_populates="application", cascade="all, delete-orphan", uselist=False
+    )
+    outreach: Mapped[OutreachDraft | None] = relationship(
         back_populates="application", cascade="all, delete-orphan", uselist=False
     )
 
@@ -376,3 +383,37 @@ class LoginAttempt(Base):
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
+
+
+class OutreachDraft(Base, TimestampMixin):
+    """An email to a candidate, written from a template and waiting for a person.
+
+    Nothing here sends itself. A draft exists, someone reads it, and sending is a
+    separate act recorded with who did it (plan §8). The template is rendered by
+    Python with merge fields, not written by a model: a generated sentence like
+    "we were impressed by your work on X" is exactly what a model produces and
+    exactly what is wrong when X is not in the résumé — and it goes out over the
+    client's name to someone who did not get the job (plan §5.1.6).
+    """
+
+    __tablename__ = "outreach_drafts"
+
+    id: Mapped[uuid.UUID] = _pk()
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, unique=True
+    )
+    kind: Mapped[OutreachKind] = mapped_column(OUTREACH_KIND, nullable=False)
+    state: Mapped[OutreachState] = mapped_column(
+        OUTREACH_STATE, nullable=False, default=OutreachState.DRAFT, index=True
+    )
+    subject: Mapped[str] = mapped_column(String(300), nullable=False)
+    body: Mapped[str] = mapped_column(Text, nullable=False)
+    template_version: Mapped[str] = mapped_column(String(40), nullable=False)
+    # Who pressed send, and when. Empty on a draft, and the API refuses to send
+    # without them.
+    approved_by: Mapped[str | None] = mapped_column(String(200))
+    sent_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    provider_message_id: Mapped[str | None] = mapped_column(String(200))
+    last_error: Mapped[str | None] = mapped_column(Text)
+
+    application: Mapped[Application] = relationship(back_populates="outreach")

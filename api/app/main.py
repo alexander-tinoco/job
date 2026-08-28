@@ -5,7 +5,15 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI, Response, status
 from sqlalchemy import text
 
-from app.api.v1 import applications, auth, evaluations, openings, panel, public
+from app.api.v1 import (
+    applications,
+    auth,
+    evaluations,
+    openings,
+    outreach,
+    panel,
+    public,
+)
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.workers.runner import run_forever
@@ -37,6 +45,7 @@ app.include_router(public.router)
 app.include_router(applications.router)
 app.include_router(evaluations.router)
 app.include_router(panel.router)
+app.include_router(outreach.router)
 
 
 @app.get("/health")

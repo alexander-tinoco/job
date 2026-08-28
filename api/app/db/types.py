@@ -42,3 +42,14 @@ class QueueState(enum.StrEnum):
     SENT = "sent"
     DONE = "done"
     FAILED = "failed"
+
+
+class OutreachKind(enum.StrEnum):
+    INVITE = "invite"
+    DECLINE = "decline"
+
+
+class OutreachState(enum.StrEnum):
+    DRAFT = "draft"
+    SENT = "sent"
+    FAILED = "failed"

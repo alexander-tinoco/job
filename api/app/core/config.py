@@ -26,6 +26,11 @@ class Settings(BaseSettings):
     # should be able to trigger one (CLAUDE.md AI rule 12).
     worker_enabled: bool = False
 
+    # Outreach. Unset means sending is unavailable and the API says so, rather
+    # than accepting an approval and quietly dropping the message.
+    resend_api_key: str = ""
+    outreach_from: str = ""
+
     # Résumé storage. The path is a root; files land under {root}/{application_id}/.
     uploads_dir: str = "uploads"
     max_upload_bytes: int = 10 * 1024 * 1024
