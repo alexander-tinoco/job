@@ -244,6 +244,28 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Comparing candidates
+
+A score answers "is this one any good". The decision is "this one or that one", and two totals
+side by side answer that no better than one does.
+
+```
+GET /api/v1/openings/{id}/compare?ids=<a>&ids=<b>[&ids=<c>]
+```
+
+Because the overall score is a weighted sum, **the gap decomposes exactly**: each criterion
+contributes `(score / 5) × weight`, so the per-criterion differences add up to the difference in
+the totals, and the screen can say how many points of the gap each row is worth. A test asserts
+that identity rather than trusting it.
+
+The headline sentence names the smallest set of criteria carrying more than half the gap — one
+when one criterion really is the story, more when the difference is genuinely spread out.
+Naming a fixed two would be a claim the numbers do not support.
+
+Three columns is the maximum. Only examined candidates can be compared: inventing zeros for one
+still in the queue would read as a judgement nobody made. Candidates from different openings are
+refused too — different rubrics, different weights, so the rows would not mean the same thing.
+
 ## Sharing a shortlist
 
 Whoever screens is rarely whoever decides. Without a way to show a hiring manager the shortlist,

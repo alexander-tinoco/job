@@ -97,3 +97,13 @@ export const ShareIcon = () => (
     <path d="M3.4 9.2v3.2a1.4 1.4 0 0 0 1.4 1.4h6.4a1.4 1.4 0 0 0 1.4-1.4V9.2" />
   </svg>
 );
+
+/** Two plates on a balance: the comparison, not a verdict. */
+export const CompareIcon = () => (
+  <svg {...base}>
+    <path d="M8 2.4v11.2" />
+    <path d="M2.6 5.4h10.8" />
+    <path d="M2.2 10.2 4.6 5.4 7 10.2" />
+    <path d="M9 10.2l2.4-4.8 2.4 4.8" />
+  </svg>
+);

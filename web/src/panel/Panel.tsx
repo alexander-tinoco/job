@@ -1,13 +1,23 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Confirm } from "../components/Confirm";
-import { CollapseIcon, ExpandIcon, ShareIcon, SignOutIcon } from "../components/icons";
+import {
+  CollapseIcon,
+  CompareIcon,
+  ExpandIcon,
+  ShareIcon,
+  SignOutIcon,
+} from "../components/icons";
 import type { User } from "../lib/api";
 import { Unauthorized, api } from "../lib/api";
-import type { ApplicationDetail, Opening, RankedPage } from "../lib/types";
+import type { ApplicationDetail, Comparison as Result, Opening, RankedPage } from "../lib/types";
+import { Comparison } from "./Comparison";
 import { Exhibit } from "./Exhibit";
 import { Plate } from "./Plate";
 
 type Filter = "all" | "open" | "flagged" | "shortlisted";
+
+/** Three columns is already more than anyone reads at once. */
+const MAX_COMPARED = 3;
 
 const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Everyone" },
@@ -30,6 +40,10 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [shareUrl, setShareUrl] = useState<string | null>(null);
   const [sharing, setSharing] = useState(false);
+  // `null` is the ordinary panel. An array — even an empty one — means the list
+  // is picking candidates to line up rather than opening them.
+  const [picked, setPicked] = useState<string[] | null>(null);
+  const [comparison, setComparison] = useState<Result | null>(null);
   const plate = useRef<HTMLDivElement>(null);
 
   const fail = useCallback(
@@ -69,6 +83,26 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
   }, [selected, fail]);
 
   useEffect(reloadDetail, [reloadDetail]);
+
+  // Two is the point at which a comparison exists; below that there is nothing
+  // to line up, so the fetch simply does not happen.
+  useEffect(() => {
+    if (!openingId || picked === null || picked.length < 2) {
+      setComparison(null);
+      return;
+    }
+    api.compare(openingId, picked).then(setComparison).catch(fail);
+  }, [openingId, picked, fail]);
+
+  const pick = useCallback((id: string) => {
+    setPicked((current) => {
+      if (current === null) return current;
+      if (current.includes(id)) return current.filter((one) => one !== id);
+      // Silently dropping the click would look broken, so the oldest column
+      // gives way to the newest.
+      return [...current, id].slice(-MAX_COMPARED);
+    });
+  }, []);
 
   // Each application opens at its own beginning. Landing halfway down the
   // previous candidate's page is how a reviewer misses the summary entirely.
@@ -146,6 +180,15 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
             </button>
             <button
               className="control quiet"
+              title="Line two candidates up side by side"
+              aria-label="Compare candidates"
+              aria-pressed={picked !== null}
+              onClick={() => setPicked((current) => (current === null ? [] : null))}
+            >
+              <CompareIcon />
+            </button>
+            <button
+              className="control quiet"
               title="Hide the list and read one application"
               aria-label="Hide the list"
               onClick={() => setFocused(true)}
@@ -217,13 +260,24 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
 
         {error && <p className="notice-error" style={{ padding: "12px 18px" }}>{error}</p>}
 
+        {picked !== null && (
+          <p className="picking-note">
+            {picked.length === 0
+              ? "Pick two candidates to line up. Only examined ones can be compared."
+              : picked.length === 1
+                ? "One picked. Pick another."
+                : `${picked.length} picked · at most ${MAX_COMPARED}`}
+          </p>
+        )}
+
         {visible.map((item, index) => (
           <Exhibit
             key={item.id}
             item={item}
             rank={index + 1}
-            selected={item.id === selected}
-            onSelect={setSelected}
+            selected={picked !== null ? picked.includes(item.id) : item.id === selected}
+            picking={picked !== null}
+            onSelect={picked !== null ? pick : setSelected}
           />
         ))}
 
@@ -238,7 +292,17 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
       </div>
 
       <div className="register" ref={plate}>
-        {detail ? (
+        {picked !== null ? (
+          comparison ? (
+            <Comparison result={comparison} />
+          ) : (
+            <p className="empty">
+              <strong>Compare two candidates</strong>
+              A score answers "is this one good". The real question is "this one or that one" —
+              pick two on the left and this shows exactly which criteria separate them.
+            </p>
+          )
+        ) : detail ? (
           <Plate
             detail={detail}
             onChanged={() => {

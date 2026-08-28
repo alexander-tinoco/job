@@ -8,6 +8,7 @@ from sqlalchemy import text
 from app.api.v1 import (
     applications,
     auth,
+    compare,
     evaluations,
     lifecycle,
     openings,
@@ -50,6 +51,7 @@ app.include_router(panel.router)
 app.include_router(outreach.router)
 app.include_router(lifecycle.router)
 app.include_router(sharing.router)
+app.include_router(compare.router)
 
 
 @app.get("/health")

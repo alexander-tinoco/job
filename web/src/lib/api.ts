@@ -1,5 +1,6 @@
 import type {
   ApplicationDetail,
+  Comparison,
   Decision,
   DecisionKind,
   Opening,
@@ -83,6 +84,12 @@ export const api = {
   ranked: (openingId: string, limit = 100) =>
     request<RankedPage>(
       `/api/v1/openings/${openingId}/applications?limit=${limit}`,
+    ),
+
+  /** Lines two or three candidates up and says where the gap comes from. */
+  compare: (openingId: string, ids: string[]) =>
+    request<Comparison>(
+      `/api/v1/openings/${openingId}/compare?${ids.map((id) => `ids=${id}`).join("&")}`,
     ),
 
   detail: (applicationId: string) =>

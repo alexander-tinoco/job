@@ -14,16 +14,25 @@ export function Exhibit({
   item,
   rank,
   selected,
+  picking,
   onSelect,
 }: {
   item: ApplicationSummary;
   rank: number;
   selected: boolean;
+  /** While picking, an unexamined candidate has no scores to line up. */
+  picking?: boolean;
   onSelect: (id: string) => void;
 }) {
   const scored = item.overall_score !== null;
   return (
-    <button className="exhibit" aria-current={selected} onClick={() => onSelect(item.id)}>
+    <button
+      className={picking ? "exhibit picking" : "exhibit"}
+      aria-current={selected}
+      aria-pressed={picking ? selected : undefined}
+      disabled={picking && !scored}
+      onClick={() => onSelect(item.id)}
+    >
       <span className="exhibit-rank">{scored ? String(rank).padStart(2, "0") : "—"}</span>
 
       <span>

@@ -115,3 +115,42 @@ export interface SearchHit {
   overall_score: string | null;
   excerpt: string;
 }
+
+export interface ComparedSide {
+  application_id: string;
+  score: number;
+  /** What this criterion added to that candidate's overall score. */
+  contribution: string;
+  justification: string;
+  quotes: string[];
+}
+
+export interface ComparedCriterion {
+  criterion_id: string;
+  criterion_name: string;
+  weight: number;
+  mandatory: boolean;
+  sides: ComparedSide[];
+  /** Empty when everyone scored the same: a tie crowns nobody. */
+  leaders: string[];
+  spread: string;
+}
+
+export interface ComparedCandidate {
+  id: string;
+  name: string;
+  overall_score: string;
+  summary: string;
+  relevant_years_experience: string;
+  mandatory_requirements_met: boolean;
+  tampered: boolean;
+  decision: string | null;
+}
+
+export interface Comparison {
+  opening_title: string;
+  candidates: ComparedCandidate[];
+  criteria: ComparedCriterion[];
+  /** The one or two criteria carrying the difference. */
+  decisive: string[];
+}
