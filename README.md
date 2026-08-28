@@ -23,8 +23,8 @@ docker compose up -d --build
 | | |
 |---|---|
 | Panel | http://localhost:5173 |
+| Application page | http://localhost:5173/apply/{slug} |
 | API docs | http://localhost:8000/docs |
-| Public application page | http://localhost:5173/openings/{slug} |
 
 nginx serves the panel and proxies `/api` and `/openings` to the API, so the browser sees a
 single origin: no CORS, and the admin token never crosses an origin boundary.
@@ -46,6 +46,33 @@ cd api && .venv/bin/python scripts/seed_demo.py
 The seed uploads the ten golden-set résumés and evaluates them — about a cent. It includes the
 tampered copy, which is the interesting row: **it scores identically to its clean twin**,
 because the hidden text was stripped before anything was evaluated.
+
+#### Walk the applicant's path
+
+The seed publishes one opening. Its public page is:
+
+**http://localhost:5173/apply/data-analyst-demo**
+
+This is the hiring company's page, not Verbatim's: Mercadis leads, and Verbatim signs once at
+the foot. The applicant never sees the rubric and never learns a score. Sending requires the
+consent box, which starts unchecked — GDPR art. 22, not a UI flourish.
+
+Apply with any PDF, then open the panel. Your application appears **at the top of the list**,
+marked *awaiting examination* and with no score: extraction is deterministic and runs on upload,
+so the résumé, its text and its integrity flags are there immediately, while the score waits for
+the next batch. **Examine now** on the candidate's page runs that one synchronously instead —
+seconds, and about $0.0006.
+
+To see the part that shows the product best, upload the tampered file the golden set already
+carries:
+
+```
+api/tests/golden/pdfs/ibarra_injected.pdf
+```
+
+It arrives flagged **concealed text**, and its page shows what the eye cannot see — the hidden
+instruction, its reason, its contrast ratio against the background and its page number — beside
+a score computed from the visible text alone.
 
 #### Local demo credentials
 
