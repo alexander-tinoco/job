@@ -2,7 +2,7 @@ import uuid
 
 from fastapi import APIRouter, HTTPException, status
 
-from app.api.deps import AdminDep, SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.db.models import Company
 from app.schemas.openings import (
     CompanyCreate,
@@ -18,12 +18,12 @@ router = APIRouter(prefix="/api/v1", tags=["openings"])
 
 
 @router.get("/rubric-templates", response_model=list[RubricTemplate])
-def list_rubric_templates(_: AdminDep) -> list[RubricTemplate]:
+def list_rubric_templates(_: CurrentUser) -> list[RubricTemplate]:
     return TEMPLATES
 
 
 @router.post("/companies", response_model=CompanyOut, status_code=status.HTTP_201_CREATED)
-def create_company(payload: CompanyCreate, session: SessionDep, _: AdminDep) -> CompanyOut:
+def create_company(payload: CompanyCreate, session: SessionDep, _: CurrentUser) -> CompanyOut:
     company = service.create_company(session, payload.name)
     session.commit()
     return CompanyOut.model_validate(company)
@@ -35,7 +35,7 @@ def create_company(payload: CompanyCreate, session: SessionDep, _: AdminDep) -> 
     status_code=status.HTTP_201_CREATED,
 )
 def create_opening(
-    company_id: uuid.UUID, payload: OpeningCreate, session: SessionDep, _: AdminDep
+    company_id: uuid.UUID, payload: OpeningCreate, session: SessionDep, _: CurrentUser
 ) -> OpeningCreated:
     company = session.get(Company, company_id)
     if company is None:
@@ -46,12 +46,12 @@ def create_opening(
 
 
 @router.get("/openings", response_model=list[OpeningOut])
-def list_openings(session: SessionDep, _: AdminDep) -> list[OpeningOut]:
+def list_openings(session: SessionDep, _: CurrentUser) -> list[OpeningOut]:
     return [OpeningOut.model_validate(o) for o in service.list_openings(session)]
 
 
 @router.get("/openings/{opening_id}", response_model=OpeningOut)
-def get_opening(opening_id: uuid.UUID, session: SessionDep, _: AdminDep) -> OpeningOut:
+def get_opening(opening_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> OpeningOut:
     opening = service.get_opening(session, opening_id)
     if opening is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Opening not found.")
@@ -59,7 +59,7 @@ def get_opening(opening_id: uuid.UUID, session: SessionDep, _: AdminDep) -> Open
 
 
 @router.post("/openings/{opening_id}/close", response_model=OpeningOut)
-def close_opening(opening_id: uuid.UUID, session: SessionDep, _: AdminDep) -> OpeningOut:
+def close_opening(opening_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> OpeningOut:
     opening = service.get_opening(session, opening_id)
     if opening is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Opening not found.")

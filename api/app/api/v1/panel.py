@@ -5,7 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Query, status
 from fastapi.responses import FileResponse
 
-from app.api.deps import AdminDep, SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.core.config import get_settings
 from app.db.models import Application, JobOpening
 from app.schemas.panel import (
@@ -33,7 +33,7 @@ def _opening(session: SessionDep, opening_id: uuid.UUID) -> JobOpening:
 def ranked_applications(
     opening_id: uuid.UUID,
     session: SessionDep,
-    _: AdminDep,
+    _: CurrentUser,
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
 ) -> RankedPage:
@@ -44,7 +44,7 @@ def ranked_applications(
 def search_applications(
     opening_id: uuid.UUID,
     session: SessionDep,
-    _: AdminDep,
+    _: CurrentUser,
     q: Annotated[str, Query(min_length=2, max_length=200)],
     limit: Annotated[int, Query(ge=1, le=MAX_PAGE)] = 25,
 ) -> SearchResults:
@@ -53,7 +53,7 @@ def search_applications(
 
 @router.get("/applications/{application_id}", response_model=ApplicationDetail)
 def application_detail(
-    application_id: uuid.UUID, session: SessionDep, _: AdminDep
+    application_id: uuid.UUID, session: SessionDep, _: CurrentUser
 ) -> ApplicationDetail:
     found = panel.detail(session, application_id)
     if found is None:
@@ -62,7 +62,7 @@ def application_detail(
 
 
 @router.get("/applications/{application_id}/resume")
-def download_resume(application_id: uuid.UUID, session: SessionDep, _: AdminDep) -> FileResponse:
+def download_resume(application_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> FileResponse:
     """Serve the original PDF as a download, never inline.
 
     This file was uploaded by a stranger and PDF viewers execute JavaScript.
@@ -97,7 +97,7 @@ def download_resume(application_id: uuid.UUID, session: SessionDep, _: AdminDep)
     status_code=status.HTTP_201_CREATED,
 )
 def record_decision(
-    application_id: uuid.UUID, payload: DecisionIn, session: SessionDep, _: AdminDep
+    application_id: uuid.UUID, payload: DecisionIn, session: SessionDep, _: CurrentUser
 ) -> DecisionOut:
     """The human decision. It never overwrites the model's; both are kept."""
     application = session.get(Application, application_id)

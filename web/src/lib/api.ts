@@ -7,64 +7,65 @@ import type {
   SearchHit,
 } from "./types";
 
-const TOKEN_KEY = "screening.admin-token";
-
 /**
- * The admin token lives in localStorage.
- *
- * This is a placeholder and a weak one: a single shared secret, no users, no
- * expiry, no rotation, and readable by any script on the page. It is acceptable
- * for a one-company-per-deployment MVP and is not acceptable before a real
- * client. See the README.
+ * The session is an HttpOnly cookie, so there is nothing for this file to store
+ * or attach. That is the point: no script on the page can read the credential,
+ * which is what `localStorage` could never offer. `credentials: "include"` is
+ * all that is needed, and the panel is same-origin behind nginx anyway.
  */
-export function getToken(): string | null {
-  try {
-    return localStorage.getItem(TOKEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-export function setToken(token: string): void {
-  try {
-    localStorage.setItem(TOKEN_KEY, token);
-  } catch {
-    /* Private browsing. The token simply will not persist. */
-  }
-}
-
-export function clearToken(): void {
-  try {
-    localStorage.removeItem(TOKEN_KEY);
-  } catch {
-    /* Nothing to clear. */
-  }
-}
-
 export class Unauthorized extends Error {}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const token = getToken();
   const response = await fetch(path, {
     ...init,
+    credentials: "include",
     headers: {
       ...(init?.body ? { "Content-Type": "application/json" } : {}),
-      ...(token ? { "X-Admin-Token": token } : {}),
       ...init?.headers,
     },
   });
 
-  if (response.status === 401 || response.status === 503) {
-    throw new Unauthorized("Invalid or missing admin token.");
+  if (response.status === 401) {
+    throw new Unauthorized("Your session has expired.");
   }
   if (!response.ok) {
     const body = await response.text();
-    throw new Error(body.slice(0, 300) || `Request failed (${response.status})`);
+    let detail = body.slice(0, 300);
+    try {
+      detail = (JSON.parse(body) as { detail?: string }).detail ?? detail;
+    } catch {
+      /* Not JSON; the raw body is the best we have. */
+    }
+    throw new Error(detail || `Request failed (${response.status})`);
   }
+  if (response.status === 204) return undefined as T;
   return (await response.json()) as T;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  full_name: string;
+  last_login_at: string | null;
+}
+
 export const api = {
+  login: (email: string, password: string) =>
+    request<User>("/api/v1/auth/login", {
+      method: "POST",
+      body: JSON.stringify({ email, password }),
+    }),
+
+  logout: () => request<void>("/api/v1/auth/logout", { method: "POST" }),
+
+  me: () => request<User>("/api/v1/auth/me"),
+
+  /** Runs the synchronous evaluation for one candidate, at full price. */
+  evaluateNow: (applicationId: string) =>
+    request<unknown>(`/api/v1/applications/${applicationId}/evaluate`, {
+      method: "POST",
+    }),
+
   openings: () => request<Opening[]>("/api/v1/openings"),
 
   ranked: (openingId: string, limit = 100) =>

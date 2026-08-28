@@ -21,7 +21,9 @@ services:
       dockerfile: Dockerfile
     environment:
       DATABASE_URL: postgresql+psycopg://screening:screening@db:5432/screening
-      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-token-change-me}
+      # Local compose serves plain http, so the Secure flag would stop the
+      # cookie being stored. Never false in a deployment.
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
       # Off unless asked for: a loop that starts by accident spends real money.
       WORKER_ENABLED: ${WORKER_ENABLED:-false}

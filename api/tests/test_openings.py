@@ -130,9 +130,8 @@ def test_rubric_templates_are_available_to_hr(client: TestClient, auth: dict[str
     assert "software_engineer" in keys
 
 
-def test_private_endpoints_reject_a_missing_or_wrong_token(client: TestClient) -> None:
+def test_private_endpoints_reject_an_anonymous_caller(client: TestClient) -> None:
     assert client.get("/api/v1/openings").status_code == 401
-    assert client.get("/api/v1/openings", headers={"X-Admin-Token": "wrong"}).status_code == 401
 
 
 def test_closing_an_opening_flips_its_status(
@@ -147,16 +146,11 @@ def test_closing_an_opening_flips_its_status(
     assert response.json()["status"] == "closed"
 
 
-def test_private_endpoints_fail_closed_when_no_token_is_configured(
-    client: TestClient, monkeypatch: object
-) -> None:
-    """An unset ADMIN_TOKEN must deny everything, not open the CRUD to the internet."""
-    from app.core.config import get_settings
+def test_private_endpoints_refuse_an_unknown_session(client: TestClient) -> None:
+    """A forged or stale cookie is not a session."""
+    client.cookies.set("screening_session", "not-a-real-token")
 
-    monkeypatch.setenv("ADMIN_TOKEN", "")  # type: ignore[attr-defined]
-    get_settings.cache_clear()
+    response = client.get("/api/v1/openings")
 
-    response = client.get("/api/v1/openings", headers={"X-Admin-Token": "anything"})
-
-    assert response.status_code == 503
-    assert "not configured" in response.text
+    assert response.status_code == 401
+    assert "session has expired" in response.text

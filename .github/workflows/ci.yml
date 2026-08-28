@@ -30,6 +30,7 @@ jobs:
       # rule 12); every test uses recorded fixtures.
       OPENAI_API_KEY: ""
       WORKER_ENABLED: "false"
+      COOKIE_SECURE: "false"
 
     steps:
       - uses: actions/checkout@v4

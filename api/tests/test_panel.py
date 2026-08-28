@@ -209,9 +209,8 @@ def test_a_decision_is_recorded_with_its_reason_and_author(
     )
 
     assert response.status_code == 201
-    log = session.scalar(select(AuditLog))
+    log = session.scalar(select(AuditLog).where(AuditLog.action == "decision.shortlist"))
     assert log is not None
-    assert log.action == "decision.shortlist"
     assert log.payload["reason"] == "Best Python depth"
     # The disagreement between human and model is the data worth keeping.
     assert log.payload["model_score"] is not None

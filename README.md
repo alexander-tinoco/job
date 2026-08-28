@@ -64,15 +64,32 @@ npm install                     # at the repository root
 
 ## Authentication
 
-Private endpoints are guarded by an `X-Admin-Token` header compared against `ADMIN_TOKEN`.
-This is a placeholder until real auth arrives in Phase 8. It **fails closed**: an unset
-`ADMIN_TOKEN` disables every private endpoint rather than leaving the CRUD open.
+Email and password, with a server-side session in an `HttpOnly` cookie.
 
 ```bash
-curl -H "X-Admin-Token: $ADMIN_TOKEN" localhost:8000/api/v1/openings
+cd api
+.venv/bin/python -m app.cli create-user you@company.com "Your Name"
 ```
 
-The public opening page (`GET /openings/{slug}`) needs no token and never exposes
+### The choices, and why
+
+| Decision | Reason |
+|---|---|
+| **Argon2id**, explicit parameters | Memory-hard: a leaked hash costs an attacker RAM per guess, not just cycles. Parameters are pinned so a library default cannot silently weaken every stored password |
+| **Server-side sessions**, not a self-contained token | Revocable. Logging out, disabling an account or a suspected theft take effect on the next request instead of waiting for an expiry |
+| **Only the token's hash is stored** | A dump of the sessions table hands nobody a working session |
+| **`HttpOnly` cookie**, not `localStorage` | No script on the page can read it. An XSS can act while the page is open but cannot steal a credential to use later from elsewhere |
+| **`SameSite=Strict`** | Another origin cannot make the browser act as this user, which removes the CSRF class here |
+| **`Secure`** unless `COOKIE_SECURE=false` | Off only for local http |
+| **A new token on every sign-in** | Session fixation: a value planted beforehand never becomes the authenticated one |
+| **Idle and absolute deadlines** (8 h / 24 h) | A session ends at whichever comes first |
+| **Identical answer for unknown email and wrong password** | Different answers turn the login form into an account directory |
+| **A dummy hash when no user matches** | Otherwise the response time answers "does this email exist?" |
+| **5 failures per email, 20 per address, 15-minute window** | The lockout holds even once the password is right, so guessing on the last attempt buys nothing |
+| **8-character minimum, no composition rules** | NIST SP 800-63B. Forced rules produce `Password1!` |
+| **Sign-in and sign-out to `AuditLog`** | — |
+
+The public opening page (`GET /openings/{slug}`) needs no session and never exposes
 `company_context` or the rubric — publishing the scoring criteria would tell candidates
 exactly what to write.
 

@@ -16,9 +16,9 @@ class Settings(BaseSettings):
 
     database_url: str = "postgresql+psycopg://screening:screening@localhost:5432/screening"
     openai_api_key: str = ""
-    # Guards the private endpoints until real auth arrives in Phase 8.
-    # Empty means "deny everything": failing closed is the safe default.
-    admin_token: str = ""
+    # Set to false only for local development over plain http. In any deployment
+    # this must stay true: without it the session cookie travels in the clear.
+    cookie_secure: bool = True
     environment: str = "development"
 
     # The background scheduler is off unless explicitly enabled. Failing closed:

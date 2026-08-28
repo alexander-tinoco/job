@@ -1,48 +1,62 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CandidateDetail } from "./components/CandidateDetail";
 import { CandidateRow } from "./components/CandidateRow";
-import { Unauthorized, api, clearToken, getToken, setToken } from "./lib/api";
+import { Unauthorized, api } from "./lib/api";
+import type { User } from "./lib/api";
 import type { ApplicationDetail, Opening, RankedPage } from "./lib/types";
 
 type Filter = "all" | "unreviewed" | "flagged" | "shortlisted";
 
-function TokenGate({ onDone }: { onDone: () => void }) {
-  const [value, setValue] = useState("");
+function SignIn({ onDone }: { onDone: (user: User) => void }) {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  async function submit(event: React.FormEvent) {
+    event.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      onDone(await api.login(email.trim(), password));
+    } catch (caught) {
+      // Whatever the server said, and it says the same thing for an unknown
+      // email as for a wrong password.
+      setError(caught instanceof Error ? caught.message : String(caught));
+    } finally {
+      setBusy(false);
+    }
+  }
+
   return (
-    <div className="gate">
+    <form className="gate" onSubmit={submit}>
       <h1>Candidate Screening</h1>
-      <p>
-        Enter the admin token for this deployment. It is stored in this browser
-        only.
-      </p>
+      <p>Sign in to review candidates.</p>
+      <input
+        type="email"
+        autoComplete="username"
+        placeholder="Email"
+        value={email}
+        onChange={(event) => setEmail(event.target.value)}
+      />
       <input
         type="password"
-        value={value}
-        placeholder="Admin token"
-        onChange={(event) => setValue(event.target.value)}
-        onKeyDown={(event) => {
-          if (event.key === "Enter" && value.trim()) {
-            setToken(value.trim());
-            onDone();
-          }
-        }}
+        autoComplete="current-password"
+        placeholder="Password"
+        value={password}
+        onChange={(event) => setPassword(event.target.value)}
       />
-      <button
-        className="btn"
-        disabled={!value.trim()}
-        onClick={() => {
-          setToken(value.trim());
-          onDone();
-        }}
-      >
-        Open the panel
+      <button className="btn" type="submit" disabled={busy || !email || !password}>
+        {busy ? "Signing in…" : "Sign in"}
       </button>
-    </div>
+      {error && <p className="error">{error}</p>}
+    </form>
   );
 }
 
 export default function App() {
-  const [authed, setAuthed] = useState(() => getToken() !== null);
+  const [me, setMe] = useState<User | null>(null);
+  const [checking, setChecking] = useState(true);
   const [openings, setOpenings] = useState<Opening[]>([]);
   const [openingId, setOpeningId] = useState<string | null>(null);
   const [page, setPage] = useState<RankedPage | null>(null);
@@ -55,15 +69,26 @@ export default function App() {
 
   const fail = useCallback((caught: unknown) => {
     if (caught instanceof Unauthorized) {
-      clearToken();
-      setAuthed(false);
+      // The cookie is gone or the session ended server-side. Either way the
+      // browser is no longer signed in.
+      setMe(null);
       return;
     }
     setError(caught instanceof Error ? caught.message : String(caught));
   }, []);
 
+  // Ask the server who we are rather than trusting anything local: the session
+  // may have been revoked since this tab was opened.
   useEffect(() => {
-    if (!authed) return;
+    api
+      .me()
+      .then(setMe)
+      .catch(() => setMe(null))
+      .finally(() => setChecking(false));
+  }, []);
+
+  useEffect(() => {
+    if (!me) return;
     api
       .openings()
       .then((list) => {
@@ -71,7 +96,7 @@ export default function App() {
         setOpeningId((current) => current ?? list[0]?.id ?? null);
       })
       .catch(fail);
-  }, [authed, fail]);
+  }, [me, fail]);
 
   const reload = useCallback(() => {
     if (!openingId) return;
@@ -121,13 +146,25 @@ export default function App() {
     });
   }, [page, filter, matches]);
 
-  if (!authed) return <TokenGate onDone={() => setAuthed(true)} />;
+  if (checking) return <p className="empty">Loading…</p>;
+  if (!me) return <SignIn onDone={setMe} />;
 
   return (
     <div className="app">
       <div className="column list">
         <div className="bar">
-          <h1>{page?.opening_title ?? "Candidates"}</h1>
+          <h1>
+            {page?.opening_title ?? "Candidates"}
+            <button
+              className="btn"
+              style={{ float: "right", padding: "3px 10px", fontSize: 12 }}
+              onClick={() => {
+                api.logout().finally(() => setMe(null));
+              }}
+            >
+              Sign out {me.full_name}
+            </button>
+          </h1>
           <select
             value={openingId ?? ""}
             onChange={(event) => {

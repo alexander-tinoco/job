@@ -25,3 +25,9 @@ uploads/
 api/scripts/.batch_id
 web/dist/
 web/node_modules/
+
+# Impeccable is a development tool, reinstallable with `npx impeccable install`.
+# 3.5 MB of vendored skill files is not product source.
+.github/skills/
+.github/agents/
+.github/hooks/

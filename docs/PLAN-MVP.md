@@ -407,6 +407,23 @@ account changing tier later.
 
 ---
 
+### 5.1.6 Outreach emails are templates, not generated text
+
+Decided 2026-08-27. Drafts come from templates with merge fields (candidate name, role, next
+step), edited by HR before sending.
+
+**Not written by a model**, and not for cost — one call per shortlisted candidate would be five
+or ten per opening, which is nothing. The reason is that a generated email invents. "We were
+impressed by your work on X" is exactly the sentence a model produces and exactly the sentence
+that is wrong when X is not in the résumé, and it goes out over the client's name to a person
+who did not get the job.
+
+If this is revisited, an AI-drafted email has to pass the same discipline as the evaluation:
+structured output, and every factual claim verified against the sanitized résumé text before a
+human ever sees the draft.
+
+---
+
 ## 6. Anti-injection: removing the attack's ceiling
 
 The attack: a candidate embeds in the PDF, white-on-white or at 1pt, *"Ignore previous
@@ -529,7 +546,7 @@ explicit authorization. The working cycle is in `CLAUDE.md`.
 | 6 | **Validation & calibration** — *done, see §5.1.5* | Ten synthetic candidates across ten layouts, three runs per model; effort sweep; injection measured end to end | ρ +0.976 for luna against the key; effort and model decided on numbers; injection deflated rather than inflated; zero unverified quotes in 66 runs |
 | 7 | Batch, queue & scheduler | `job_queue`, `asyncio` worker, send every 6 h + trigger at 50 pending, hourly collect, sub-batch splitting by enqueued-token limit, retries, "evaluate now" button, **and a hardened JSON Schema for the batch path (§5.1.2)** | 50 fixture résumés in one batch; hitting 50 pending sends off-slot; an oversized send splits itself; a partial failure loses nothing; **the batch path uses `strict: true`, verified against a request that would break the schema** |
 | 8 | HR panel | `web/` app: ranking, profile, résumé viewer, evidence clickable to offset, flags, per-candidate state, full-text search, shortlist/reject | Full walkthrough against the real API; a candidate in `extracted` already shows résumé and flags with no score |
-| 9 | Close & outreach | Opening close, email drafts, sending via Resend after approval | No email leaves without a recorded explicit approval |
+| 9 | Close & outreach | Opening close, **template** email drafts with merge fields, sending via Resend after approval | No email leaves without a recorded explicit approval |
 | 10 | Compliance & data lifecycle | `AuditLog`, CSV export, 6-month retention job, access/erasure endpoints | Retention deletes on schedule; erasure by email removes résumé, evaluation and PII while keeping anonymized audit records |
 | 11 | Quality & cost | Golden set (30 synthetic résumés + 10 with injection), metrics script, measured real cost, Railway + Cloudflare deployment | §1 metrics measured; 0 injected résumés in the top 20; real cost checked against §3 |
 

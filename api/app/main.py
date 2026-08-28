@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator
 from fastapi import FastAPI, Response, status
 from sqlalchemy import text
 
-from app.api.v1 import applications, evaluations, openings, panel, public
+from app.api.v1 import applications, auth, evaluations, openings, panel, public
 from app.core.config import get_settings
 from app.db.session import SessionLocal
 from app.workers.runner import run_forever
@@ -31,6 +31,7 @@ async def lifespan(_: FastAPI) -> AsyncIterator[None]:
 
 
 app = FastAPI(title="Candidate Screening API", lifespan=lifespan)
+app.include_router(auth.router)
 app.include_router(openings.router)
 app.include_router(public.router)
 app.include_router(applications.router)

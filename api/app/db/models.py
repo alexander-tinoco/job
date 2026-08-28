@@ -311,3 +311,68 @@ class RuntimeState(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = _pk()
     key: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
     value: Mapped[int] = mapped_column(Integer, nullable=False)
+
+
+class User(Base, TimestampMixin):
+    """Someone who can open the panel."""
+
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = _pk()
+    # Stored lowercased. The unique constraint is case-sensitive, so without
+    # normalising, Ada@acme.com and ada@acme.com would be two accounts.
+    email: Mapped[str] = mapped_column(String(320), nullable=False, unique=True)
+    full_name: Mapped[str] = mapped_column(String(200), nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    is_active: Mapped[bool] = mapped_column(nullable=False, default=True)
+    last_login_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    sessions: Mapped[list[Session]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Session(Base, TimestampMixin):
+    """A logged-in browser.
+
+    Server-side rather than a self-contained token, so a session can actually be
+    revoked: logging out, disabling an account or a suspected theft all take
+    effect on the next request instead of waiting for an expiry.
+    """
+
+    __tablename__ = "sessions"
+
+    id: Mapped[uuid.UUID] = _pk()
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # The hash of the cookie value, never the value itself. A dump of this table
+    # does not hand anyone a working session.
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False, unique=True)
+    # Absolute deadline. A session that has been alive long enough is ended even
+    # if it is still being used.
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    # Idle deadline, pushed forward on each request.
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+    user: Mapped[User] = relationship(back_populates="sessions")
+
+
+class LoginAttempt(Base):
+    """Failed sign-ins, for rate limiting.
+
+    Recorded per email and per address so neither a single account nor a single
+    source can be hammered. Successful attempts are not stored: this table exists
+    to throttle, not to track people.
+    """
+
+    __tablename__ = "login_attempts"
+    __table_args__ = (Index("ix_login_attempts_email_created", "email", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _pk()
+    email: Mapped[str] = mapped_column(String(320), nullable=False)
+    source_ip: Mapped[str] = mapped_column(String(64), nullable=False, index=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )

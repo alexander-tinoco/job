@@ -3,7 +3,7 @@ import uuid
 from fastapi import APIRouter, HTTPException, status
 
 from app.ai.client import MissingApiKeyError
-from app.api.deps import AdminDep, SessionDep
+from app.api.deps import CurrentUser, SessionDep
 from app.db.models import Application
 from app.schemas.evaluations import EvaluationOut
 from app.services.evaluation import NotReadyError, evaluate_application
@@ -16,7 +16,7 @@ router = APIRouter(prefix="/api/v1", tags=["evaluations"])
     response_model=EvaluationOut,
     status_code=status.HTTP_201_CREATED,
 )
-def evaluate_now(application_id: uuid.UUID, session: SessionDep, _: AdminDep) -> EvaluationOut:
+def evaluate_now(application_id: uuid.UUID, session: SessionDep, _: CurrentUser) -> EvaluationOut:
     """Evaluate one candidate synchronously, at full price.
 
     The batch path is what an opening runs on (plan §4.1). This exists for the

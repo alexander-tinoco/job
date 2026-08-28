@@ -13,6 +13,9 @@ dependencies = [
     "pymupdf>=1.25",
     # Required by FastAPI to parse multipart form uploads.
     "python-multipart>=0.0.20",
+    # Argon2id password hashing. Chosen over bcrypt: memory-hard, so a leaked
+    # hash costs an attacker RAM per guess, not just cycles.
+    "argon2-cffi>=23.1",
     "openai>=1.59",
 ]
 

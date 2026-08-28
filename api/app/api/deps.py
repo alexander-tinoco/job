@@ -1,12 +1,18 @@
-import secrets
 from collections.abc import Iterator
 from typing import Annotated
 
-from fastapi import Depends, Header, HTTPException, status
+from fastapi import Cookie, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
-from app.core.config import get_settings
+from app.db.models import User
 from app.db.session import SessionLocal
+from app.services import auth
+
+# HttpOnly, so no script on the page can read it. This is the whole reason the
+# session does not live in localStorage: an XSS can act as the user while the
+# page is open, but it cannot steal a credential and use it later from
+# somewhere else.
+SESSION_COOKIE = "screening_session"
 
 
 def get_session() -> Iterator[Session]:
@@ -14,21 +20,36 @@ def get_session() -> Iterator[Session]:
         yield session
 
 
-def require_admin(x_admin_token: Annotated[str | None, Header()] = None) -> None:
-    """Placeholder guard for the private endpoints until Phase 8 brings real auth.
-
-    Fails closed: an unset ADMIN_TOKEN denies every request rather than opening
-    the CRUD to the internet. compare_digest keeps the check constant-time.
-    """
-    expected = get_settings().admin_token
-    if not expected:
-        raise HTTPException(
-            status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="ADMIN_TOKEN is not configured; private endpoints are disabled.",
-        )
-    if not x_admin_token or not secrets.compare_digest(x_admin_token, expected):
-        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Invalid admin token.")
-
-
 SessionDep = Annotated[Session, Depends(get_session)]
-AdminDep = Annotated[None, Depends(require_admin)]
+
+
+def current_user(
+    session: SessionDep,
+    screening_session: Annotated[str | None, Cookie(alias=SESSION_COOKIE)] = None,
+) -> User:
+    if not screening_session:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Not signed in.")
+    user = auth.resolve_session(session, screening_session)
+    if user is None:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, detail="Your session has expired.")
+    session.commit()
+    return user
+
+
+CurrentUser = Annotated[User, Depends(current_user)]
+
+
+def client_ip(request: Request) -> str:
+    """The address to throttle on.
+
+    Behind a proxy the socket address is the proxy, so the first hop of
+    X-Forwarded-For is used when present. That header is client-controlled and
+    therefore only ever used for rate limiting, never for authorisation.
+    """
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()[:64]
+    return (request.client.host if request.client else "unknown")[:64]
+
+
+ClientIp = Annotated[str, Depends(client_ip)]

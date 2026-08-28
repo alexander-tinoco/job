@@ -11,10 +11,12 @@ from app.api.deps import get_session
 from app.core.config import get_settings
 from app.db import models  # noqa: F401  -- import registers every table on Base
 from app.db.base import Base
+from app.db.models import User
 from app.main import app
 
 TEST_DB = "screening_test"
-ADMIN_TOKEN = "test-admin-token"
+TEST_EMAIL = "hr@example.com"
+TEST_PASSWORD = "correct-horse-battery"
 
 
 def _test_database_url() -> str:
@@ -70,8 +72,10 @@ def client(
     Uploads go to a per-test tmp_path so a test can never write into the real
     uploads directory.
     """
-    monkeypatch.setenv("ADMIN_TOKEN", ADMIN_TOKEN)
     monkeypatch.setenv("UPLOADS_DIR", str(tmp_path / "uploads"))
+    # The test client speaks plain http, so the Secure flag would stop the
+    # cookie ever being stored.
+    monkeypatch.setenv("COOKIE_SECURE", "false")
     get_settings.cache_clear()
 
     app.dependency_overrides[get_session] = lambda: session
@@ -82,5 +86,23 @@ def client(
 
 
 @pytest.fixture
-def auth() -> dict[str, str]:
-    return {"X-Admin-Token": ADMIN_TOKEN}
+def user(session: Session) -> User:
+    from app.services.auth import create_user
+
+    created = create_user(session, TEST_EMAIL, "HR Person", TEST_PASSWORD)
+    session.flush()
+    return created
+
+
+@pytest.fixture
+def auth(client: TestClient, user: User) -> dict[str, str]:
+    """Sign in for real and keep the cookie.
+
+    Kept named `auth` and returning a dict so existing tests pass it unchanged;
+    the cookie the client stored is what actually authenticates them.
+    """
+    response = client.post(
+        "/api/v1/auth/login", json={"email": user.email, "password": TEST_PASSWORD}
+    )
+    assert response.status_code == 200, response.text
+    return {}
