@@ -415,11 +415,14 @@ form into a way to find out who has an account. The one exception is the lockout
 so: telling a throttled person their password is wrong would have them retry for fifteen
 minutes, and it reveals nothing, since the throttle counts per address as well as per email.
 
-The password field has a visibility toggle, off by default. Hiding what someone types defends
-against a shoulder, not an attacker, and it causes more failed sign-ins than it prevents.
+The password field has a visibility toggle, off by default: the eye is crossed out while the
+password is hidden and open once it is readable, so the icon shows the current state rather than
+the action. Hiding what someone types defends against a shoulder, not an attacker, and it causes
+more failed sign-ins than it prevents.
 
-Signing out asks first: a review session is long, and losing your place to a misplaced click is
-worse than one extra keystroke.
+Signing out asks first, and both the control and its confirmation are oxide — the palette's stop
+colour. A review session is long, and losing your place to a misplaced click is worse than one
+extra keystroke.
 
 ### Search cannot be injected
 

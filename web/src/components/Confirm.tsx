@@ -44,7 +44,7 @@ export function Confirm({
           Cancel
         </button>
         <button
-          className={destructive ? "control" : "control primary"}
+          className={destructive ? "control stop" : "control primary"}
           onClick={onConfirm}
           disabled={busy}
           autoFocus

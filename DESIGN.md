@@ -29,11 +29,18 @@ Bench neutrals with exactly one signal colour.
 | `--amber` | `#b06a00` | **Reserved by law** |
 | `--amber-wash` | `#fdf0d6` | The raking-light highlight on a located quote |
 | `--oxide` | `#8f2f22` | **Reserved by law** |
+| `--oxide-wash` | `#fbeeec` | The ground under a stop |
 
 **The two laws.** `--amber` marks *what the instrument found that the eye missed* — a located
-quote, a concealed span. `--oxide` marks *a claim that could not be verified*. Neither appears
-anywhere else, ever. Ninety per cent of candidates render with no signal colour at all, and that
-is what makes the ten per cent legible.
+quote, a concealed span. `--oxide` means **stop**: a claim that failed verification, or an
+action that cannot be undone. Neither appears anywhere else, ever. Ninety per cent of candidates
+render with no signal colour at all, and that is what makes the ten per cent legible.
+
+The oxide law was widened on 2026-08-27, from "an unverified claim" to "stop" in general, so
+that signing out could be red. The two readings never share a surface — one is content, the
+other is chrome — so the colour still carries exactly one meaning wherever it appears. Widening
+it in the document rather than making an exception in the code is the point: a law with a
+silent exception is not a law.
 
 Taken from the arcade challenger this direction beat: a reserved colour is a law, not an accent.
 

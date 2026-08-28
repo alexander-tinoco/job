@@ -44,30 +44,7 @@ anyone maintained it. Part of this role is making it something people trust agai
 
 Answer the awkward questions. Why did checkout conversion drop for one seller tier and not
 another. Whether the new fee structure paid for itself. What actually happens to a seller in
-their first ninety days.
-
-WHAT WE ARE LOOKING FOR
-
-Real SQL, not a course. You should be comfortable with window functions, and comfortable
-saying a query is too slow and fixing it.
-
-Statistics you can explain to someone who does not have them. We care much more about whether
-you know when an experiment is unreadable than about which test you reach for.
-
-Evidence of impact. A number attached to a decision that changed. "Built a dashboard" tells us
-nothing; "cut refund handling time 30% after the analysis showed where it went" tells us a lot.
-
-Comfort with Looker or an equivalent, and enough Python to work with pandas.
-
-NICE, NOT REQUIRED
-
-dbt, causal inference beyond A/B, marketplace or two-sided-market experience, Spanish.
-
-HOW WE HIRE
-
-We read every application. If there is a fit we will send you a short take-home based on real
-anonymised data, then two conversations: one technical, one with the team you would join. Four
-weeks end to end, and we tell you either way."""
+their first ninety days."""
 
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000"
 EMAIL = os.environ.get("SEED_EMAIL", "demo@acme.com")

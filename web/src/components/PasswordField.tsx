@@ -36,7 +36,8 @@ export function PasswordField({
         aria-label={visible ? "Hide password" : "Show password"}
         title={visible ? "Hide password" : "Show password"}
       >
-        {visible ? <EyeOffIcon /> : <EyeIcon />}
+        {/* Crossed out while the password is hidden; open once it is readable. */}
+        {visible ? <EyeIcon /> : <EyeOffIcon />}
       </button>
     </div>
   );

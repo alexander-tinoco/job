@@ -131,7 +131,7 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
               <CollapseIcon />
             </button>
             <button
-              className="control quiet"
+              className="control quiet stop"
               title={`Signed in as ${me.email}`}
               onClick={() => setConfirmingSignOut(true)}
             >

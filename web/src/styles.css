@@ -73,6 +73,12 @@ input, textarea, select { font: inherit; color: inherit; }
 .control.quiet { background: none; border-color: transparent; color: var(--graphite); padding: 6px 8px; }
 .control[aria-pressed="true"]:not(.primary) { border-color: var(--graphite); background: #efece5; }
 .control.quiet:hover { color: var(--ink); background: #efece5; }
+/* Oxide is the stop colour: a claim that failed verification, or an action that
+   cannot be undone. It never means anything else. */
+.control.stop { color: var(--oxide); border-color: #dfb3ac; background: var(--oxide-wash); }
+.control.stop:hover:not(:disabled) { border-color: var(--oxide); background: #f7e2de; }
+.control.quiet.stop { background: none; border-color: transparent; }
+.control.quiet.stop:hover { background: var(--oxide-wash); color: var(--oxide); }
 
 .field {
   width: 100%;
