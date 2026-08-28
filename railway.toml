@@ -1,0 +1,10 @@
+[build]
+builder = "dockerfile"
+dockerfilePath = "api/Dockerfile"
+
+[deploy]
+# /ready checks the database; /health would report ok with Postgres down.
+healthcheckPath = "/ready"
+healthcheckTimeout = 30
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

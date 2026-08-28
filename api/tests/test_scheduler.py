@@ -18,8 +18,8 @@ FIXTURES = Path(__file__).parent / "fixtures"
 
 
 @pytest.fixture(autouse=True)
-def fresh_budget() -> None:
-    scheduler.reset_budget()
+def fresh_budget(session: Session) -> None:
+    scheduler.reset_budget(session)
 
 
 def _ready(session: Session, email: str, slug: str) -> Application:
@@ -84,19 +84,27 @@ def test_a_send_is_cut_to_the_token_budget(session: Session) -> None:
 
 def test_a_rejection_narrows_the_budget_for_next_time(session: Session) -> None:
     """The real ceiling is the API's, not a constant we guessed."""
-    before = scheduler.token_budget()
+    before = scheduler.token_budget(session)
 
-    scheduler.remember_limit(attempted=40_000)
+    scheduler.remember_limit(session, attempted=40_000)
 
-    assert scheduler.token_budget() == 20_000
-    assert scheduler.token_budget() < before
+    assert scheduler.token_budget(session) == 20_000
+    assert scheduler.token_budget(session) < before
 
 
-def test_the_budget_never_collapses_to_nothing() -> None:
+def test_the_budget_survives_a_restart(session: Session) -> None:
+    """A module global would be relearned by every worker and lost on restart."""
+    scheduler.remember_limit(session, attempted=30_000)
+    session.expire_all()
+
+    assert scheduler.token_budget(session) == 15_000
+
+
+def test_the_budget_never_collapses_to_nothing(session: Session) -> None:
     for _ in range(20):
-        scheduler.remember_limit(attempted=scheduler.token_budget())
+        scheduler.remember_limit(session, attempted=scheduler.token_budget(session))
 
-    assert scheduler.token_budget() >= scheduler.MIN_TOKEN_BUDGET
+    assert scheduler.token_budget(session) >= scheduler.MIN_TOKEN_BUDGET
 
 
 def test_a_limit_error_is_recognised_and_others_are_not() -> None:
@@ -133,7 +141,7 @@ def test_a_rejected_send_does_not_lose_the_queue_rows(
     outcome = scheduler.send_once(session, hour=6)
 
     assert outcome.batch_id is None
-    assert scheduler.token_budget() < scheduler.DEFAULT_TOKEN_BUDGET
+    assert scheduler.token_budget(session) < scheduler.DEFAULT_TOKEN_BUDGET
 
 
 def test_an_application_with_no_text_is_failed_not_sent(
@@ -280,6 +288,9 @@ def test_the_stored_evaluation_records_its_provenance(
     stored: Evaluation | None = application.evaluation
     assert stored is not None
     assert stored.model_id == "gpt-5.6-luna"
+    # Candidate risks and system flags are different things and stay apart.
+    assert isinstance(stored.risks, list)
+    assert isinstance(stored.review_flags, list)
     assert stored.prompt_version == "evaluator.v1"
     # The batch path must not skip the Python-side scoring (plan §6, layer 3).
     assert stored.overall_score > 0

@@ -32,26 +32,26 @@ MAX_ITEMS_PER_BATCH = 200
 # not a constant to trust: the real limit depends on the account's usage tier
 # and changes as the account spends. `remember_limit` narrows it from what the
 # API actually rejects, which stays correct across tier changes.
+#
+# Stored in the database rather than in a module global: two workers would
+# otherwise each learn the limit the hard way, and a restart would forget it.
 DEFAULT_TOKEN_BUDGET = 80_000
 MIN_TOKEN_BUDGET = 5_000
 
-_token_budget = DEFAULT_TOKEN_BUDGET
+
+def token_budget(session: Session) -> int:
+    return queue.get_state(session, queue.TOKEN_BUDGET_KEY, DEFAULT_TOKEN_BUDGET)
 
 
-def token_budget() -> int:
-    return _token_budget
-
-
-def remember_limit(attempted: int) -> None:
+def remember_limit(session: Session, attempted: int) -> None:
     """Halve the working budget after a rejection, with a floor."""
-    global _token_budget
-    _token_budget = max(MIN_TOKEN_BUDGET, attempted // 2)
-    logger.warning("enqueued_token_limit_hit attempted=%s new_budget=%s", attempted, _token_budget)
+    narrowed = max(MIN_TOKEN_BUDGET, attempted // 2)
+    queue.set_state(session, queue.TOKEN_BUDGET_KEY, narrowed)
+    logger.warning("enqueued_token_limit_hit attempted=%s new_budget=%s", attempted, narrowed)
 
 
-def reset_budget() -> None:
-    global _token_budget
-    _token_budget = DEFAULT_TOKEN_BUDGET
+def reset_budget(session: Session) -> None:
+    queue.set_state(session, queue.TOKEN_BUDGET_KEY, DEFAULT_TOKEN_BUDGET)
 
 
 @dataclass(frozen=True)
@@ -70,11 +70,12 @@ def should_send(hour: int, pending: int) -> bool:
 def _items(session: Session, rows: list[JobQueue]) -> list[tuple[JobQueue, batch.BatchItem]]:
     """Pair queue rows with their request, dropping rows that cannot be built."""
     pairs: list[tuple[JobQueue, batch.BatchItem]] = []
+    applications = queue.load_applications(session, rows)
     for row in rows:
         if row.application_id is None:
             queue.mark_failed(session, row, "queue row has no application")
             continue
-        application = session.get(Application, row.application_id)
+        application = applications.get(row.application_id)
         if application is None:
             queue.mark_failed(session, row, "application no longer exists")
             continue
@@ -117,13 +118,16 @@ def send_once(session: Session, hour: int) -> SendOutcome:
     if not pairs:
         return SendOutcome(batch_id=None, sent=0, skipped=0)
 
-    chosen = fit_to_budget(pairs, token_budget())
+    chosen = fit_to_budget(pairs, token_budget(session))
     try:
         batch_id = batch.submit([item for _, item in chosen])
     except Exception as exc:  # noqa: BLE001 - the API is the only source of the real limit
         if _looks_like_a_limit(exc):
-            remember_limit(batch.estimate_input_tokens([item for _, item in chosen]))
+            attempted = batch.estimate_input_tokens([item for _, item in chosen])
+            # The rollback discards the claim; the narrowed budget must outlive it.
             session.rollback()
+            remember_limit(session, attempted)
+            session.commit()
             return SendOutcome(batch_id=None, sent=0, skipped=len(pairs))
         raise
 

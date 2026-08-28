@@ -1,0 +1,81 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  api:
+    runs-on: ubuntu-latest
+
+    # Tests run against real Postgres, not SQLite: native enums, JSONB and the
+    # generated tsvector column do not exist in SQLite, so an in-memory database
+    # would let tests pass while production fails.
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: screening
+          POSTGRES_PASSWORD: screening
+          POSTGRES_DB: screening
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U screening"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql+psycopg://screening:screening@localhost:5432/screening
+      # Deliberately empty. No CI job may reach the OpenAI API (CLAUDE.md AI
+      # rule 12); every test uses recorded fixtures.
+      OPENAI_API_KEY: ""
+      WORKER_ENABLED: "false"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Install
+        working-directory: api
+        run: |
+          uv venv --python 3.14
+          uv pip install -e ".[dev]"
+
+      - name: Lint
+        working-directory: api
+        run: |
+          .venv/bin/ruff check .
+          .venv/bin/ruff format --check .
+
+      - name: Types
+        working-directory: api
+        run: .venv/bin/mypy .
+
+      - name: Migrations apply and roll back cleanly
+        working-directory: api
+        run: |
+          .venv/bin/alembic upgrade head
+          .venv/bin/alembic downgrade base
+          .venv/bin/alembic upgrade head
+          .venv/bin/alembic check
+
+      - name: Tests
+        working-directory: api
+        run: .venv/bin/pytest -q
+
+  commits:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci
+      - name: Conventional commit messages
+        run: npx commitlint --from origin/main --to HEAD --verbose
+        if: github.event_name == 'pull_request'

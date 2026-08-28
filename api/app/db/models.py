@@ -61,7 +61,7 @@ class JobOpening(Base, TimestampMixin):
 
     id: Mapped[uuid.UUID] = _pk()
     company_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("companies.id", ondelete="CASCADE"), nullable=False, index=True
     )
     slug: Mapped[str] = mapped_column(String(120), nullable=False, unique=True)
     title: Mapped[str] = mapped_column(String(200), nullable=False)
@@ -131,7 +131,7 @@ class Application(Base, TimestampMixin):
         ForeignKey("job_openings.id", ondelete="CASCADE"), nullable=False
     )
     candidate_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("candidates.id", ondelete="CASCADE"), nullable=False, index=True
     )
     state: Mapped[ApplicationState] = mapped_column(
         APPLICATION_STATE, nullable=False, default=ApplicationState.RECEIVED, index=True
@@ -208,7 +208,12 @@ class Evaluation(Base, TimestampMixin):
     relevant_years_experience: Mapped[Decimal] = mapped_column(Numeric(4, 1), nullable=False)
     mandatory_requirements_met: Mapped[bool] = mapped_column(nullable=False)
     missing_requirements: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    # What the model saw as risk in the candidate.
     risks: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
+    # What our own verification objected to: an unfound quote, a criterion the
+    # model invented. These are system flags, not statements about the person,
+    # and the panel must not present them as the same thing.
+    review_flags: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     detected_skills: Mapped[list[str]] = mapped_column(JSONB, nullable=False, default=list)
     summary: Mapped[str] = mapped_column(Text, nullable=False, default="")
     needs_human_review: Mapped[bool] = mapped_column(nullable=False, default=False)
@@ -238,7 +243,7 @@ class CriterionScore(Base, TimestampMixin):
         ForeignKey("evaluations.id", ondelete="CASCADE"), nullable=False
     )
     criterion_id: Mapped[uuid.UUID] = mapped_column(
-        ForeignKey("criteria.id", ondelete="CASCADE"), nullable=False
+        ForeignKey("criteria.id", ondelete="CASCADE"), nullable=False, index=True
     )
     score: Mapped[int] = mapped_column(Integer, nullable=False)
     justification: Mapped[str] = mapped_column(Text, nullable=False, default="")
@@ -284,7 +289,7 @@ class JobQueue(Base, TimestampMixin):
     id: Mapped[uuid.UUID] = _pk()
     task: Mapped[str] = mapped_column(String(80), nullable=False)
     application_id: Mapped[uuid.UUID | None] = mapped_column(
-        ForeignKey("applications.id", ondelete="CASCADE")
+        ForeignKey("applications.id", ondelete="CASCADE"), index=True
     )
     state: Mapped[QueueState] = mapped_column(
         QUEUE_STATE, nullable=False, default=QueueState.PENDING
@@ -292,3 +297,17 @@ class JobQueue(Base, TimestampMixin):
     attempts: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     batch_id: Mapped[str | None] = mapped_column(String(120), index=True)
     last_error: Mapped[str | None] = mapped_column(Text)
+
+
+class RuntimeState(Base, TimestampMixin):
+    """Small integers the workers need to remember across restarts.
+
+    Currently one key: the enqueued-token budget the Batch API last accepted.
+    Process-global state would be relearned by every worker and lost on restart.
+    """
+
+    __tablename__ = "runtime_state"
+
+    id: Mapped[uuid.UUID] = _pk()
+    key: Mapped[str] = mapped_column(String(80), nullable=False, unique=True)
+    value: Mapped[int] = mapped_column(Integer, nullable=False)

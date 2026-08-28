@@ -11,10 +11,10 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from sqlalchemy import select
-from sqlalchemy.orm import Session
+from sqlalchemy import func, select
+from sqlalchemy.orm import Session, selectinload
 
-from app.db.models import Application, JobQueue
+from app.db.models import Application, JobOpening, JobQueue, RuntimeState
 from app.db.types import ApplicationState, QueueState
 
 TASK_EVALUATE = "evaluate"
@@ -60,15 +60,37 @@ def claim_pending(session: Session, limit: int) -> list[JobQueue]:
     return rows
 
 
-def count_pending(session: Session) -> int:
-    return len(
-        list(
-            session.scalars(
-                select(JobQueue.id).where(
-                    JobQueue.task == TASK_EVALUATE, JobQueue.state == QueueState.PENDING
-                )
-            )
+def load_applications(session: Session, rows: list[JobQueue]) -> dict[uuid.UUID, Application]:
+    """Load every application, opening and criterion the batch needs, in one go.
+
+    Returns the objects rather than warming a cache, because the Session holds
+    only weak references: a preload whose result is discarded is collected and
+    the next `session.get` queries again. Without this, building a 200-item
+    batch issued about three queries per candidate.
+    """
+    ids = [row.application_id for row in rows if row.application_id is not None]
+    if not ids:
+        return {}
+    loaded = session.scalars(
+        select(Application)
+        .where(Application.id.in_(ids))
+        .options(
+            selectinload(Application.opening).selectinload(JobOpening.criteria),
+            selectinload(Application.resume),
         )
+    ).all()
+    return {application.id: application for application in loaded}
+
+
+def count_pending(session: Session) -> int:
+    """Counted in Postgres. Fetching every id to call len() moves rows to learn a number."""
+    return int(
+        session.scalar(
+            select(func.count())
+            .select_from(JobQueue)
+            .where(JobQueue.task == TASK_EVALUATE, JobQueue.state == QueueState.PENDING)
+        )
+        or 0
     )
 
 
@@ -146,3 +168,20 @@ def stale_sent(session: Session, older_than: datetime) -> list[JobQueue]:
 
 def now() -> datetime:
     return datetime.now(UTC)
+
+
+TOKEN_BUDGET_KEY = "enqueued_token_budget"
+
+
+def get_state(session: Session, key: str, default: int) -> int:
+    row = session.scalar(select(RuntimeState).where(RuntimeState.key == key))
+    return row.value if row is not None else default
+
+
+def set_state(session: Session, key: str, value: int) -> None:
+    row = session.scalar(select(RuntimeState).where(RuntimeState.key == key))
+    if row is None:
+        session.add(RuntimeState(key=key, value=value))
+    else:
+        row.value = value
+    session.flush()

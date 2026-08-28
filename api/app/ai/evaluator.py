@@ -7,6 +7,7 @@ candidate, one candidate per call.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 
 from openai.types.shared import ReasoningEffort
@@ -56,7 +57,9 @@ class EvaluationRequest:
     resume_text: str
 
 
+@lru_cache(maxsize=1)
 def load_prompt() -> str:
+    """Read once. The file is immutable at runtime and a batch asks per candidate."""
     return _PROMPT_PATH.read_text(encoding="utf-8")
 
 

@@ -65,9 +65,13 @@ def persist_evaluation(
     checked against the résumé and the weights produce the overall score (plan
     §6, layers 3 and 4). The batch path must not skip any of it.
     """
-    request = build_request(application)
+    resume = application.resume
+    if resume is None:
+        raise NotReadyError("No extracted résumé text to verify against.")
+    # The sanitized text directly, not a rebuilt request: reconstructing the
+    # whole prompt to recover a string it already has is wasted work.
     weights = {c.name: c.weight for c in application.opening.criteria}
-    verified: VerifiedEvaluation = verify(output, request.resume_text, weights)
+    verified: VerifiedEvaluation = verify(output, resume.visible_text, weights)
 
     by_name = {c.name.strip().lower(): c for c in application.opening.criteria}
     evaluation = Evaluation(
@@ -76,7 +80,8 @@ def persist_evaluation(
         relevant_years_experience=Decimal(str(output.relevant_years_experience)),
         mandatory_requirements_met=output.mandatory_requirements_met,
         missing_requirements=list(output.missing_requirements),
-        risks=list(output.risks) + list(verified.review_reasons),
+        risks=list(output.risks),
+        review_flags=list(verified.review_reasons),
         detected_skills=list(output.detected_skills),
         summary=output.summary,
         needs_human_review=verified.needs_human_review,

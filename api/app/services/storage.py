@@ -77,3 +77,24 @@ def _remove_if_empty(directory: Path) -> None:
     # Not empty, or already gone. Either way there is nothing to clean up.
     with contextlib.suppress(OSError):
         directory.rmdir()
+
+
+def delete_resume(relative_path: str) -> bool:
+    """Remove a stored résumé and its per-application directory.
+
+    A cascading delete in Postgres clears the rows and leaves the file behind.
+    Retention (Phase 10) has to erase the document itself, not just the record
+    of it, or "deleted after six months" is not true.
+    """
+    root = Path(get_settings().uploads_dir).resolve()
+    # Resolved, not lexical: is_relative_to() alone accepts "uploads/../../etc",
+    # because it compares strings and never collapses the "..".
+    target = (root / relative_path).resolve()
+    if not target.is_relative_to(root):
+        # storage_path comes from our own code today, but a traversal here would
+        # delete arbitrary files, so it is checked rather than trusted.
+        raise InvalidUploadError("Refusing to delete outside the uploads directory.")
+    existed = target.exists()
+    target.unlink(missing_ok=True)
+    _remove_if_empty(target.parent)
+    return existed

@@ -270,6 +270,40 @@ be seen rather than silently dropped.
 **The worker is off by default.** `WORKER_ENABLED=true` switches it on; anything else leaves it
 stopped. A loop that starts by accident spends real money.
 
+## Deployment
+
+```
+api/Dockerfile        python:3.14-slim + tesseract, non-root, migrations on start
+api/.dockerignore     keeps tests, scripts, .venv and .env out of the image
+railway.toml          builder, health check, restart policy
+.github/workflows/    lint, types, migration up/down/up, tests against real Postgres
+```
+
+`alembic upgrade head` runs as part of the container's start command. It is idempotent, so an
+up-to-date database is a no-op, and no deploy needs a manual step.
+
+The image runs as uid 10001, not root: uploaded résumés are untrusted input and PyMuPDF parses
+them in this process.
+
+### Health versus readiness
+
+Two probes, deliberately different:
+
+| Endpoint | Checks | Purpose |
+|---|---|---|
+| `/health` | nothing, always cheap | Liveness. Stays 200 with Postgres down |
+| `/ready` | `SELECT 1` | Readiness. Returns 503 when the database is unreachable |
+
+A liveness probe that queries the database restarts the app whenever the database blips. A
+readiness probe that does not is useless, because the platform keeps routing traffic to an
+instance that can do nothing. Railway is pointed at `/ready`.
+
+### CI
+
+The workflow runs lint, `mypy`, a full `alembic upgrade → downgrade → upgrade` cycle and the
+test suite against a real Postgres service container. `OPENAI_API_KEY` is deliberately empty:
+**no CI job may reach the API**, and every test uses recorded fixtures.
+
 ## Tests
 
 Tests run against **real Postgres**, not SQLite: native enums, JSONB and the generated
