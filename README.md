@@ -13,28 +13,53 @@ Full design: [`docs/PLAN-MVP.md`](docs/PLAN-MVP.md). Working rules: [`CLAUDE.md`
 - Docker (for Postgres)
 - Node 20+ (only for the commit hooks)
 
-## Setup
+## Running the whole thing
 
 ```bash
-# Database
-docker compose up -d
+cp .env.example .env            # then fill in OPENAI_API_KEY and ADMIN_TOKEN
+docker compose up -d --build
+```
 
-# Commit hooks
-npm install
+| | |
+|---|---|
+| Panel | http://localhost:5173 |
+| API docs | http://localhost:8000/docs |
+| Public application page | http://localhost:5173/openings/{slug} |
 
-# API
+nginx serves the panel and proxies `/api` and `/openings` to the API, so the browser sees a
+single origin: no CORS, and the admin token never crosses an origin boundary.
+
+**Compose reads the repository's `.env` automatically**, so `OPENAI_API_KEY` and `ADMIN_TOKEN`
+reach the containers without being written into `docker-compose.yml`. Override one for a single
+run with `ADMIN_TOKEN=... docker compose up -d`.
+
+### Something to look at
+
+```bash
+cd api && ADMIN_TOKEN=<yours> .venv/bin/python scripts/seed_demo.py
+```
+
+Uploads the ten golden-set résumés through the real public endpoint and evaluates them — about
+a cent. It includes the tampered copy, which is the interesting row: it scores identically to
+its clean twin, because the hidden text was stripped before anything was evaluated.
+
+## Local development
+
+```bash
+docker compose up -d db         # just the database
 cd api
 uv venv --python 3.14
 uv pip install -e ".[dev]"
-cp ../.env.example ../.env      # then fill in OPENAI_API_KEY and ADMIN_TOKEN
 uv run alembic upgrade head
+.venv/bin/uvicorn app.main:app --reload
+
+cd ../web && npm install && npm run dev
 ```
 
-## Running
+### Commit hooks
 
 ```bash
-cd api
-.venv/bin/uvicorn app.main:app --reload    # http://localhost:8000/docs
+npm install                     # at the repository root
 ```
 
 ## Authentication
@@ -321,9 +346,13 @@ owed before deployment.
 
 ```
 api/Dockerfile        python:3.14-slim + tesseract, non-root, migrations on start
-api/.dockerignore     keeps tests, scripts, .venv and .env out of the image
+web/Dockerfile        node build → nginx, proxies /api so there is one origin
+docker-compose.yml    db + api + web, api gated on the database being healthy
 railway.toml          builder, health check, restart policy
-.github/workflows/    lint, types, migration up/down/up, tests against real Postgres
+.github/workflows/    api: lint, types, migration up/down/up, tests on real Postgres
+                      web: types and build
+                      images: both Dockerfiles must still assemble
+                      commits: conventional messages on pull requests
 ```
 
 `alembic upgrade head` runs as part of the container's start command. It is idempotent, so an

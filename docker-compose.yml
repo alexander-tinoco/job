@@ -15,5 +15,43 @@ services:
       timeout: 5s
       retries: 5
 
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+psycopg://screening:screening@db:5432/screening
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-dev-token-change-me}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      # Off unless asked for: a loop that starts by accident spends real money.
+      WORKER_ENABLED: ${WORKER_ENABLED:-false}
+      UPLOADS_DIR: /srv/uploads
+      ENVIRONMENT: development
+    depends_on:
+      db:
+        condition: service_healthy
+    volumes:
+      - uploads:/srv/uploads
+    ports:
+      - "8000:8000"
+    healthcheck:
+      # /ready, not /health: readiness is what says this instance can serve.
+      test: ["CMD-SHELL", "python -c \"import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/ready',timeout=3).status==200 else 1)\""]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+  web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+    ports:
+      - "5173:80"
+
 volumes:
   db_data:
+  uploads:
