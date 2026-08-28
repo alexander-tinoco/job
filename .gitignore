@@ -23,3 +23,5 @@ node_modules/
 # Runtime
 uploads/
 api/scripts/.batch_id
+web/dist/
+web/node_modules/

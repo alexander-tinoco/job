@@ -270,6 +270,53 @@ be seen rather than silently dropped.
 **The worker is off by default.** `WORKER_ENABLED=true` switches it on; anything else leaves it
 stopped. A loop that starts by accident spends real money.
 
+## The HR panel
+
+React + Vite in `web/`. Ranked list on the left, candidate on the right.
+
+```bash
+cd web
+npm install
+npm run dev          # proxies /api to localhost:8000
+```
+
+### What it shows, and why in that shape
+
+**Unscored candidates are listed, not hidden.** Extraction is deterministic and runs on upload,
+so the résumé, its text and any tampering flags exist from the moment the application arrives.
+Only the score waits for a batch. The row says "Evaluation in progress" and **never a time** —
+the batch window is 24 h and not configurable.
+
+**Evidence is highlighted from stored offsets, not re-searched.** Verification already located
+each quote against the exact string the panel renders; searching for it again in the browser
+could highlight a different occurrence. A quote that could not be verified is shown struck out
+in red rather than dropped, so the reviewer sees that the model claimed something the résumé
+does not contain.
+
+**Candidate risks and system flags appear in separate boxes.** `risks` are the model's
+observations about the person. `review_flags` are our own verification's objections — an
+unfound quote means *our evaluation* has a problem, not the candidate. Shown together they
+would invite exactly the wrong reading.
+
+**A tampered résumé is shown, not suppressed.** Its hidden text appears as evidence with the
+reason and page, and the score beside it is computed from the visible text only.
+
+**Every decision needs a reason and an author**, and both go to `AuditLog` alongside the model's
+score — the disagreement between human and model is the most valuable data the product produces.
+The decision never overwrites the evaluation.
+
+### Security notes
+
+The original PDF is offered as a download and **never rendered inline**: it was uploaded by a
+stranger and PDF viewers execute JavaScript, so inline rendering on the panel's origin would be
+XSS with an HR session attached. The API forces `Content-Disposition: attachment`, `nosniff` and
+a sandbox CSP. Résumé text is rendered as text, never as markup.
+
+**Authentication is a placeholder and a weak one.** A single shared `X-Admin-Token`, kept in
+`localStorage`: no users, no expiry, no rotation, readable by any script on the page. Acceptable
+for a one-company-per-deployment MVP; **not acceptable before a real client**. Real auth is
+owed before deployment.
+
 ## Deployment
 
 ```
