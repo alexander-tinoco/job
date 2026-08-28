@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Verbatim">
+  <!--
+    A serif V drawn with the weight distribution of a proofreader's mark, sitting
+    on the amber rule that means "the instrument found this". The two elements of
+    the product in one figure: a reading, and the line it came from.
+  -->
+  <rect width="64" height="64" rx="10" fill="#faf8f4"/>
+  <path d="M17.5 17.5h7.2l7.6 22.4 7.6-22.4h7.2L34.6 49.5h-5.2z"
+        fill="#1a1815"/>
+  <rect x="17.5" y="53" width="29" height="3.4" rx="1.7" fill="#b06a00"/>
+</svg>

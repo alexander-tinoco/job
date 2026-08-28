@@ -289,3 +289,78 @@ def test_every_panel_endpoint_requires_the_token(
 
     url = path.format(opening=opening.id, application=application.id)
     assert client.get(url).status_code == 401
+
+
+def test_search_finds_a_candidate_by_surname(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    """Matching only the résumé body meant a surname found nobody."""
+    opening = make_opening(session, slug="panel-surname")
+    application = _evaluated(session, opening.id, "surname@example.com")
+    application.candidate.full_name = "Elena Vargas Iturbe"
+    session.commit()
+
+    for term in ("Vargas", "vargas", "Iturbe", "Elena"):
+        body = client.get(
+            f"/api/v1/openings/{opening.id}/search", params={"q": term}, headers=auth
+        ).json()
+        assert [hit["application_id"] for hit in body["hits"]] == [str(application.id)], term
+
+
+def test_search_still_finds_by_words_in_the_body(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    opening = make_opening(session, slug="panel-both")
+    match = _evaluated(session, opening.id, "both@example.com", text="Migrated a monolith.")
+    session.commit()
+
+    body = client.get(
+        f"/api/v1/openings/{opening.id}/search", params={"q": "monolith"}, headers=auth
+    ).json()
+
+    assert [hit["application_id"] for hit in body["hits"]] == [str(match.id)]
+
+
+def test_a_resume_page_is_served_as_an_image_not_a_pdf(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    """Inline PDF would be a stranger's script on the panel's own origin."""
+    make_opening(session, slug="panel-preview")
+    session.commit()
+    client.post(
+        "/openings/panel-preview/apply",
+        data={"full_name": "Ada", "email": "prev@example.com", "consent": "true"},
+        files={"resume": ("cv.pdf", make_resume(), "application/pdf")},
+    )
+    application = session.scalar(select(Application))
+    assert application is not None
+
+    response = client.get(f"/api/v1/applications/{application.id}/resume/pages/1", headers=auth)
+
+    assert response.status_code == 200
+    assert response.headers["content-type"] == "image/png"
+    assert response.content.startswith(b"\x89PNG")
+    assert "sandbox" in response.headers["content-security-policy"]
+    # Personal data: the browser may keep it, a shared proxy may not.
+    assert "private" in response.headers["cache-control"]
+
+
+def test_a_page_beyond_the_document_is_a_404(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    make_opening(session, slug="panel-page-oob")
+    session.commit()
+    client.post(
+        "/openings/panel-page-oob/apply",
+        data={"full_name": "Ada", "email": "oob@example.com", "consent": "true"},
+        files={"resume": ("cv.pdf", make_resume(), "application/pdf")},
+    )
+    application = session.scalar(select(Application))
+    assert application is not None
+
+    assert (
+        client.get(
+            f"/api/v1/applications/{application.id}/resume/pages/99", headers=auth
+        ).status_code
+        == 404
+    )

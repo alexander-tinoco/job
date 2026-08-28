@@ -330,7 +330,10 @@ stopped. A loop that starts by accident spends real money.
 
 ## The HR panel
 
-React + Vite in `web/`. Ranked list on the left, candidate on the right.
+React + Vite in `web/`. The design world is **The Examiner's Bench** — see `DESIGN.md` for the
+palette laws, the type system and the signature interaction; `PRODUCT.md` holds product truth.
+
+Ranked exhibits on the left, the document under examination on the right.
 
 ```bash
 cd web
@@ -344,6 +347,10 @@ npm run dev          # proxies /api to localhost:8000
 so the résumé, its text and any tampering flags exist from the moment the application arrives.
 Only the score waits for a batch. The row says "Evaluation in progress" and **never a time** —
 the batch window is 24 h and not configurable.
+
+**The résumé is shown two ways.** The transcript is what the model actually read, with quoted
+passages highlighted; the document register shows the pages **rendered server-side as PNGs**.
+Images, not an embedded PDF: the file came from a stranger and PDF viewers execute scripts.
 
 **Evidence is highlighted from stored offsets, not re-searched.** Verification already located
 each quote against the exact string the panel renders; searching for it again in the browser

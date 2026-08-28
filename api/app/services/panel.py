@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import uuid
 
-from sqlalchemy import Select, func, select
+from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.db.models import (
@@ -207,6 +207,11 @@ def search(session: Session, opening: JobOpening, query: str, limit: int) -> Sea
     so hidden text is not searchable either (plan §6, layer 1).
     """
     tsquery = func.websearch_to_tsquery("simple", query)
+    # Two ways to match, because they answer different questions. Full-text over
+    # the résumé answers "who has migrated a monolith"; a substring over the name
+    # answers "Vargas" — and matching only the body meant a surname found nobody
+    # unless it happened to appear in the prose.
+    like = f"%{query.strip()}%"
     rows = session.execute(
         select(
             Application, Candidate.full_name, Evaluation.overall_score, ResumeDocument.visible_text
@@ -216,7 +221,11 @@ def search(session: Session, opening: JobOpening, query: str, limit: int) -> Sea
         .outerjoin(Evaluation, Evaluation.application_id == Application.id)
         .where(
             Application.job_opening_id == opening.id,
-            ResumeDocument.search_vector.op("@@")(tsquery),
+            or_(
+                ResumeDocument.search_vector.op("@@")(tsquery),
+                Candidate.full_name.ilike(like),
+                Candidate.email.ilike(like),
+            ),
         )
         .order_by(Evaluation.overall_score.desc().nullslast())
         .limit(limit)
@@ -240,7 +249,11 @@ def _as_int(value: object, default: int) -> int:
 
 
 def _excerpt(text: str, query: str) -> str:
-    """A window around the first matching word, so the hit is readable in the list."""
+    """A window around the first matching word, so the hit is readable in the list.
+
+    Falls back to the opening of the résumé when the match was on the name
+    rather than the body: an excerpt that shows nothing is worse than a start.
+    """
     lowered = text.lower()
     for word in (w.strip('"-') for w in query.split()):
         if not word:
