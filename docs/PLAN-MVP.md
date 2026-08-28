@@ -30,7 +30,7 @@ caps the main attack vector (§6).
 | Metric | Target |
 |---|---|
 | HR time per 500-résumé opening | from ~30 h to < 2 h |
-| Candidates from the system's top 10 that HR keeps after review | ≥ 7 |
+| Candidates from the system's top 10 that HR keeps after review | ≥ 7 *(measurable only once a real opening runs — see §5.1.5)* |
 | Résumés with prompt injection that reach the top 20 | 0 |
 | Delay between application and visible score | < 6 h |
 | Total cost (AI + infrastructure) per client per month | < $15 |
@@ -373,6 +373,36 @@ so a hundred candidates is under three cents — the decision would be about qua
 
 ---
 
+### 5.1.5 Phase 6 closed on a synthetic answer key — permanently
+
+Phase 6 was written expecting 15–20 real résumés from a filled position, ranked by hand. Those
+will not be obtained (owner's decision, 2026-08-27). The golden set in `tests/golden/` is what
+validation rests on: ten constructed data-analyst candidates across ten layouts, with an
+intended ordering the author invented.
+
+**This is a permanent limitation, not a pending task**, and it changes what the project can
+claim:
+
+* Model and effort choices are justified against *a* ranking, not against a hiring manager's.
+  `gpt-5.6-luna` beating `gpt-5.4-mini` (ρ +0.976 vs +0.927) is real, but it is agreement with a
+  key written by the same person who wrote the prompt.
+* The success metric "≥ 7 of the system's top 10 kept after review" (§1) **cannot be measured
+  before a real opening runs**. It stays as the metric; it is now a launch measurement rather
+  than a pre-launch gate.
+* The first real client is therefore also the first real validation. That is a business risk
+  worth naming, and the mitigation is cheap: re-evaluating a whole opening costs cents, so the
+  rubric can be corrected mid-flight once real results are visible.
+
+What Phase 6 did settle, on measurement: reasoning effort, model choice, injection behaviour
+end to end, and that quote verification holds across ten layouts with zero failures in 66 runs.
+
+The remaining Phase 6 item — this account's enqueued-token limit — moves into Phase 7 and is
+handled at runtime rather than read from a dashboard: the splitter discovers the ceiling from
+the API's own rejection and backs off, which is correct regardless of tier and survives the
+account changing tier later.
+
+---
+
 ## 6. Anti-injection: removing the attack's ceiling
 
 The attack: a candidate embeds in the PDF, white-on-white or at 1pt, *"Ignore previous
@@ -492,7 +522,7 @@ explicit authorization. The working cycle is in `CLAUDE.md`.
 | 3 | Application intake | `POST /openings/{slug}/apply`: form + PDF, MIME/size validation, consent, storage, state `received` | Non-PDF, >10 MB and missing consent are rejected; the file lands with an unguessable name |
 | 4 | Extraction & sanitization | PyMuPDF visible/total, hidden spans, OCR fallback, patterns, `IntegrityReport`. **No AI** | Fixture with white-on-white text → `visible_text` excludes it and the report locates it |
 | 5 | Evaluator | OpenAI client, versioned prompts, `Evaluation` with strict JSON, quote verification, weighted score. **Synchronous** | Reproducible evaluation on a fixture résumé; a fabricated quote triggers review; Python computes the score |
-| 6 | **Validation & calibration** | Script that runs the evaluator over 15–20 real résumés from a filled position against a manual ranking; confirm or refute the n=1 effort findings (§6.1); iterate the evaluator prompt against injection **with measurement**; read this account's real enqueued-token limit from the dashboard and size Phase 7's splitter to it | Overlap with the manual top 10 measured and written down; injection inflation measured across the golden set, not one sample; the chosen `reasoning.effort` justified by numbers. **This is also the first thing that can be shown to a client** |
+| 6 | **Validation & calibration** — *done, see §5.1.5* | Ten synthetic candidates across ten layouts, three runs per model; effort sweep; injection measured end to end | ρ +0.976 for luna against the key; effort and model decided on numbers; injection deflated rather than inflated; zero unverified quotes in 66 runs |
 | 7 | Batch, queue & scheduler | `job_queue`, `asyncio` worker, send every 6 h + trigger at 50 pending, hourly collect, sub-batch splitting by enqueued-token limit, retries, "evaluate now" button, **and a flattened JSON Schema for the batch path (§6.2)** | 50 fixture résumés in one batch; hitting 50 pending sends off-slot; an oversized send splits itself; a partial failure loses nothing; **the batch path uses `strict: true`, verified against a request that would break the schema** |
 | 8 | HR panel | `web/` app: ranking, profile, résumé viewer, evidence clickable to offset, flags, per-candidate state, full-text search, shortlist/reject | Full walkthrough against the real API; a candidate in `extracted` already shows résumé and flags with no score |
 | 9 | Close & outreach | Opening close, email drafts, sending via Resend after approval | No email leaves without a recorded explicit approval |
