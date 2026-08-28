@@ -46,7 +46,7 @@ caps the main attack vector (§6).
 | Database | **PostgreSQL 16, no extensions** | Panel search uses `tsvector`, which ships with it |
 | Résumé extraction | **PyMuPDF, no AI.** Tesseract as fallback only | Deterministic, free, and seeing the raw PDF is what makes hidden-text detection possible (§6) |
 | Evaluation context | **Prompt engineering, no RAG** | See §4 |
-| Model | **`gpt-5.6-luna`** at `reasoning.effort: low` | Changed from `gpt-5.4-mini` on 2026-08-27 after measurement: 27 % of the cost, flagship family rather than the mini line. Quality against a human ranking is unverified and is Phase 6's job (§5.1.1) |
+| Model | **`gpt-5.6-luna`** at `reasoning.effort: low` | Chosen on the golden set, not on tier: ranks closer to the answer key than `gpt-5.4-mini` (ρ +0.976 vs +0.927) at 26 % of the cost. Luna is the volume (nano-equivalent) tier; that is a known trade, see §5.1.4. Quality against a human ranking is Phase 6's job |
 | Processing | **Batch API** (−50 %) in batches **every 6 h**, queue in Postgres | Same price as one big batch, and HR sees results the same day instead of only at close (§4.1) |
 | Email delivery | **Resend** | Simple API, generous free tier, good deliverability without owning SMTP infrastructure |
 | API + DB + worker hosting | **Railway** | Postgres, API and worker in one project. With a queue there are no spikes to absorb, so the small plan is plenty |
@@ -356,6 +356,23 @@ all.
 
 ---
 
+### 5.1.4 Long-context recall is our chosen model's weak spot
+
+`gpt-5.6-luna` scores **41.3 % on MRCR** long-context recall, against 89.6 % for `gpt-5.6-terra`.
+On every other published benchmark it sits within a few points of the tier above it; this is the
+one exception.
+
+It does not matter yet — assembled prompts are around 1,000 tokens. It matters because of a
+decision already taken: **there is no retrieval in this design** (§4), so the company context
+travels in the prompt and prompt size is what grows as a client accumulates history. The model
+chosen is the one least able to find things in a long prompt.
+
+**Tripwire: if the assembled prompt passes 15,000 tokens, re-run `scripts/compare_models.py`
+against `gpt-5.6-terra` before shipping.** At terra's rates an evaluation costs roughly $0.005,
+so a hundred candidates is under three cents — the decision would be about quality, not budget.
+
+---
+
 ## 6. Anti-injection: removing the attack's ceiling
 
 The attack: a candidate embeds in the PDF, white-on-white or at 1pt, *"Ignore previous
@@ -546,5 +563,6 @@ job/
 | A batch fails or is delayed | Candidates without a score | `job_queue` with retries and per-candidate state; the panel still shows résumé and flags; "evaluate now" is the escape hatch |
 | Exceeding the tier's enqueued-token limit | The whole send is rejected | Mandatory splitting in the scheduler (§3), tested in Phase 7 with an artificially low limit |
 | HR expects instant results | Unmet expectation | The panel says "evaluation in progress", never a specific time: the Batch window is 24 h and not configurable |
+| **Prompt growth meets luna's weak long-context recall** | Evaluations that quietly miss context | MRCR 41.3 % vs terra's 89.6 %. Irrelevant at today's ~1,000-token prompts; the 15,000-token tripwire in §5.1.4 is what catches it before a client does |
 | **The public apply endpoint has no rate limiting** | Disk fill, junk applications | The size limit stops the obvious case, but nothing stops a thousand applications with invented emails. Deliberately deferred to Phase 11: putting Cloudflare in front of the API solves it for free and better than an in-app limiter would |
 | **One deployment per client stops scaling** | Operational load | Fine at 3 clients, a full-time job at 15. Not solved in the MVP, but the date it starts hurting is closer than the plan suggests |

@@ -13,7 +13,7 @@ MVP for AI-assisted candidate screening, aimed at small businesses. The full pla
 scope: if something is not in there, it does not get built until the plan says so.
 
 Stack: Python 3.14 · FastAPI · SQLAlchemy 2.0 · PostgreSQL 16 (no extensions) · React/Vite in
-`web/`. AI: OpenAI `gpt-5.4-mini` via the Batch API. **No RAG, no embeddings, no pgvector** —
+`web/`. AI: OpenAI `gpt-5.6-luna` via the Batch API. **No RAG, no embeddings, no pgvector** —
 evaluation context lives in the prompt (§4 of the plan).
 
 ---
@@ -169,8 +169,11 @@ stop and justify it at gate 1.
    no model routing. Everything the product needs comes out of that call's schema.
    *One documented exception:* drafting a rubric from a job description, which runs **once per
    opening, not per candidate** (§4.2 of the plan).
-2. **Model: `gpt-5.4-mini`.** Do not drop to `nano` for cost — injection resistance scales with
-   capability and the saving is ~$1 per opening. Do not move up without my decision.
+2. **Model: `gpt-5.6-luna` at `reasoning.effort: "low"`.** Tier is not the criterion — the
+   golden set is. Any model change, in either direction, is decided by running
+   `scripts/compare_models.py` and comparing rank agreement, stability and unverified quotes,
+   never by price or by where the model sits in the lineup. Present the numbers and let me
+   decide.
 3. **Always strict structured output**: JSON Schema with `strict: true`. No product decision
    comes from free text parsed by hand.
 4. **Candidate content never goes in the `developer`/`system` message**, nor interpolated into

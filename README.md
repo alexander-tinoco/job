@@ -151,56 +151,73 @@ The size of that effect is per model, and the difference is large: at `medium`, 
 spent 516 reasoning tokens while `gpt-5.6-luna` spent 130–253 for the same work. "Medium" is not
 a comparable setting across models.
 
-### The model decision — settled on cost, open on quality
+### The model decision — decided by measurement, not by tier
 
 **We use `gpt-5.6-luna` at `reasoning.effort: "low"`.** Changed from `gpt-5.4-mini` on
 2026-08-27.
 
-| Model | Effort | $ / résumé | vs. previous |
+`gpt-5.6-luna` — 1,050,000 token context, 128,000 max output, knowledge cutoff 2026-02-16,
+efforts `none` through `max`.
+
+**Luna is OpenAI's volume tier — the nano-equivalent of this generation.** An earlier version of
+this file said it sat "in the flagship family rather than the mini line" and called the switch a
+move up in capability. That was wrong: OpenAI's own model page puts Luna at the nano tier and
+its guidance is "use Luna for volume, not for depth". The decision was not made on tier and does
+not depend on it.
+
+#### What it was decided on
+
+Ten synthetic data-analyst candidates across ten résumé layouts, three runs each per model:
+
+| Metric | `gpt-5.6-luna` | `gpt-5.4-mini` |
+|---|---|---|
+| Spearman ρ against the answer key | **+0.976** | +0.927 |
+| Mean standard deviation across runs | **2.07** | 2.23 |
+| Unverified quotes, 33 runs each | 0 | 0 |
+| Bottom two candidates separated correctly | **yes** | no |
+| Cost per résumé | **$0.00087** | $0.00335 |
+
+`mini` ranked the accountant with no SQL — who fails the mandatory criterion — *below* a graduate
+with no experience at all, and scored them within 0.3 points of each other. Luna put them at 2.7
+and 1.3. That is the behaviour the product needs.
+
+#### Where luna sits against the rest of its family
+
+| Benchmark | sol | terra | **luna** |
 |---|---|---|---|
-| gpt-5.4-mini | `low` (previous) | $0.00229 | — |
-| **gpt-5.6-luna** | **`low` (current)** | **$0.00062** | **27 %** |
+| Intelligence Index (max effort) | 59 | 55 | **51** |
+| Agents' Last Exam | 53.6 | 50.4 | **50.3** |
+| Terminal-Bench 2.1 | 88.8 % | 87.4 % | **84.7 %** |
+| Coding Agent Index | 80 | 77.4 | **74.6** |
+| SWE-bench Pro | 64.6 % | 63.4 % | **62.7 %** |
+| GPQA Diamond | > 92 % | > 92 % | **> 92 %** |
+| **MRCR long-context recall** | 91.5 % | 89.6 % | **41.3 %** |
+| Cost per task | $1.04 | $0.55 | **$0.21** |
 
-`luna` sits in the flagship family rather than the mini line, so this is a move up in
-capability tier at a quarter of the price — the earlier "do not drop to nano" reasoning does not
-apply here.
+Luna is within a few points of the tier above it on almost everything. **None of those benchmarks
+measure this task**, though — they are agentic, coding and science-QA evaluations. They are
+context, not evidence. The golden set above is the evidence.
 
-### Why not more reasoning, given the savings
+#### The one benchmark that matters to this architecture
 
-The obvious idea is to spend the savings on a higher effort and come out ahead on both. It was
-measured, three identical runs per level, and it does not work.
+**MRCR is 41.3 % against terra's 89.6 %.** It measures recall from a long input, and it is the
+only place luna falls off a cliff.
 
-| Effort | Clean CV (Python, Postgres) × 3 runs | Stable? | $ / résumé |
-|---|---|---|---|
-| `none` | (5,4) (5,3) (5,3) | no | $0.00051 |
-| **`low`** | **(5,3) (5,3) (4,3)** | no | **$0.00062** |
-| `medium` | (4,3) (4,3) (4,2) | no | $0.00073 |
-| `high` | (5,2) (5,2) (5,1) | no | $0.00096 |
-| `xhigh` | (5,2) (4,2) (5,1) | no | $0.00174 |
+It does not bite today: prompts are around 1,000 tokens. But this design deliberately has **no
+retrieval** — the company context goes in the prompt (plan §4), which makes prompt size the
+dimension that grows as a client accumulates context. We have chosen the model weakest at exactly
+that.
 
-Two things came out of this:
+The tripwire is written down in plan §5.1.4: **if the assembled prompt passes 15,000 tokens,
+re-run `scripts/compare_models.py` against `gpt-5.6-terra` before shipping it.** At terra's price
+the evaluation would cost about $0.005 per résumé — still under three cents for a hundred
+candidates, so this is a quality decision, not a budget one.
 
-**More reasoning did not reduce variance.** Every level, including `xhigh`, gave different
-scores across identical requests. The instability is not something effort buys away.
+#### Still unproven
 
-**More reasoning systematically lowered a criterion.** Postgres reads 3,3,3 at `low` and 2,2,1
-at `high` — a trend, not noise. Higher effort changes the calibration rather than sharpening it,
-and there is no ground truth here to say which reading is right.
-
-`low` is therefore the pick on its merits, not just its price: it is the most consistent level
-measured, and its Postgres reading of 3 is the one `gpt-5.4-mini` also gave. At `none` the model
-once returned only one of the two criteria, which `verify()` correctly flagged for human review
-— another reason not to go lower.
-
-### What is still unproven
-
-Nothing here shows luna is *better* than mini, only cheaper and differently calibrated: luna
-reads Python as 5 where mini read 4, on the same résumé, and neither has been checked against a
-human ranking. A ±1 swing appears between identical runs, so any quality claim smaller than that
-is unsupportable from this data.
-
-Phase 6 ranks both models against 15–20 real résumés with a human ordering. If luna loses there,
-the change reverts — the cost saving does not outrank a worse screen.
+The golden set's answer key is constructed, not observed. It measures agreement with a ranking
+the author invented. Phase 6 repeats the same experiment against real résumés with a human
+ordering, and that run is the one that decides.
 
 ### What the Batch API needs that the synchronous path does not
 

@@ -12,11 +12,19 @@ from openai import OpenAI
 
 from app.core.config import get_settings
 
-# Changed from gpt-5.4-mini on 2026-08-27 after measurement: luna costs 27% as
-# much per résumé and sits in the flagship family rather than the mini line, so
-# the earlier "do not drop to nano" reasoning does not apply — this is a move up
-# in capability tier, not down. Quality against a human ranking is still
-# unverified and is Phase 6's job (docs/measurements.md).
+# Changed from gpt-5.4-mini on 2026-08-27, decided by measurement rather than by
+# tier: on a ten-layout golden set luna ranked closer to the answer key than mini
+# (Spearman +0.976 vs +0.927), was marginally more stable, separated the bottom of
+# the field correctly where mini did not, and costs 26% as much.
+#
+# Luna is OpenAI's volume tier — the nano-equivalent of this generation, not a
+# step up. An earlier comment here claimed the opposite; that was wrong. The
+# decision stands on the measurement, not on where the model sits in the lineup.
+#
+# Known weakness: MRCR long-context recall is 41.3% against terra's 89.6%. Prompts
+# are ~1,000 tokens today so it does not bite, but this design puts the company
+# context in the prompt rather than retrieving it (plan §4), so prompt size is the
+# dimension that grows. See the tripwire in docs/PLAN-MVP.md §5.1.4.
 MODEL_ID = "gpt-5.6-luna"
 
 # Long enough for a slow response, short enough that a stuck request does not
