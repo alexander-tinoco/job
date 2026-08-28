@@ -6,6 +6,8 @@ COPY package.json package-lock.json ./
 RUN npm ci
 COPY tsconfig.json vite.config.ts index.html ./
 COPY src ./src
+ARG VITE_PANEL_PATH=panel
+ENV VITE_PANEL_PATH=$VITE_PANEL_PATH
 RUN npm run build
 
 FROM nginx:1.27-alpine AS runtime

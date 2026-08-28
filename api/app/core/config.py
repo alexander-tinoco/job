@@ -19,6 +19,16 @@ class Settings(BaseSettings):
     # Set to false only for local development over plain http. In any deployment
     # this must stay true: without it the session cookie travels in the clear.
     cookie_secure: bool = True
+
+    # Where the panel lives. Configurable so a deployment can choose its own and
+    # so it is never linked from the public site.
+    #
+    # This is not a security control and must not be treated as one. A URL leaks
+    # through browser history, Referer headers, bookmarks and any chat someone
+    # pastes it into. What protects the panel is the sign-in: Argon2, server-side
+    # sessions, an HttpOnly cookie and a lockout. The path only keeps the admin
+    # surface out of sight and out of search results.
+    panel_path: str = "panel"
     environment: str = "development"
 
     # The background scheduler is off unless explicitly enabled. Failing closed:

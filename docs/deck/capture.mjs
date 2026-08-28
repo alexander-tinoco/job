@@ -42,7 +42,7 @@ await phone.close();
 
 // ─── The panel ───
 const page = await browser.newPage();
-await page.goto(BASE, { waitUntil: 'networkidle0' });
+await page.goto(`${BASE}/panel`, { waitUntil: 'networkidle0' });
 await shot(page, '05-signin');
 
 await page.type('input[type=email]', 'demo@acme.com');

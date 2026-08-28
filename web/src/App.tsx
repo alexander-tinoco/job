@@ -3,7 +3,8 @@ import { Apply, Received } from "./apply/Apply";
 import type { User } from "./lib/api";
 import { PasswordField } from "./components/PasswordField";
 import { RateLimited, api } from "./lib/api";
-import { useRoute } from "./lib/router";
+import { navigate, useRoute } from "./lib/router";
+import { Home } from "./site/Home";
 import { Panel } from "./panel/Panel";
 
 export default function App() {
@@ -11,7 +12,7 @@ export default function App() {
   const [me, setMe] = useState<User | null>(null);
   const [checking, setChecking] = useState(true);
 
-  // The applicant's surfaces are public; only the panel asks who is here.
+  // Only the panel asks who is here. The site and the application pages are public.
   const isPublic = route.name !== "panel";
 
   useEffect(() => {
@@ -28,8 +29,10 @@ export default function App() {
       .finally(() => setChecking(false));
   }, [isPublic]);
 
+  if (route.name === "home") return <Home />;
   if (route.name === "apply") return <Apply slug={route.slug} />;
   if (route.name === "applied") return <Received reference={route.reference} />;
+  if (route.name === "missing") return <NotFound />;
   if (checking) return <p className="empty">Loading…</p>;
   if (!me) return <SignIn onDone={setMe} />;
   return <Panel me={me} onSignedOut={() => setMe(null)} />;
@@ -88,7 +91,28 @@ function SignIn({ onDone }: { onDone: (user: User) => void }) {
           {busy ? "Signing in…" : "Sign in"}
         </button>
         {error && <p className="notice-error">{error}</p>}
+        <p className="hint" style={{ marginTop: 18 }}>
+          <a href="/">Back to verbatim</a>
+        </p>
       </form>
+    </div>
+  );
+}
+
+
+function NotFound() {
+  return (
+    <div className="gate">
+      <div style={{ maxWidth: 380 }}>
+        <h1 className="wordmark">Nothing here</h1>
+        <p className="lede">
+          That address does not lead anywhere. If you were sent a link to apply for a job, check
+          it was copied in full.
+        </p>
+        <button className="control" onClick={() => navigate("/")}>
+          Go to the start
+        </button>
+      </div>
     </div>
   );
 }

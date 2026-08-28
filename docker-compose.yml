@@ -48,6 +48,10 @@ services:
     build:
       context: ./web
       dockerfile: Dockerfile
+      args:
+        # The panel's URL segment. Choose your own per deployment and never link
+        # to it publicly. Not a security control — the sign-in is.
+        VITE_PANEL_PATH: ${VITE_PANEL_PATH:-panel}
     depends_on:
       api:
         condition: service_healthy

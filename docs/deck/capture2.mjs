@@ -20,7 +20,7 @@ const clickRowContaining = async (needle) => {
   await new Promise(r => setTimeout(r, 600));
 };
 
-await page.goto(BASE, { waitUntil: 'networkidle0' });
+await page.goto(`${BASE}/panel`, { waitUntil: 'networkidle0' });
 await page.type('input[type=email]', 'demo@acme.com');
 await page.type('input[type=password]', 'correct-horse-battery');
 await page.click('button[type=submit]');

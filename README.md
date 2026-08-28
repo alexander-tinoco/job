@@ -22,9 +22,24 @@ docker compose up -d --build
 
 | | |
 |---|---|
-| Panel | http://localhost:5173 |
+| Public site | http://localhost:5173 |
 | Application page | http://localhost:5173/apply/{slug} |
+| Panel | http://localhost:5173/panel |
 | API docs | http://localhost:8000/docs |
+
+### Where the panel lives
+
+The panel's URL segment is set per deployment with `VITE_PANEL_PATH` (and `PANEL_PATH` on the
+API), it is never linked from the public site, and `robots.txt` disallows it.
+
+**That is hygiene, not a security control, and it must not be treated as one.** A URL leaks
+through browser history, `Referer` headers, bookmarks and any chat someone pastes it into. What
+protects the panel is the sign-in: Argon2, a server-side session, an `HttpOnly` cookie and a
+lockout. Changing the path keeps the admin surface out of sight and out of search results;
+it stops nobody who is actually looking.
+
+The application page is deliberately **not** obscured. That link gets posted on LinkedIn: it has
+to be clean and readable, because a candidate who sees a scrambled URL assumes phishing.
 
 nginx serves the panel and proxies `/api` and `/openings` to the API, so the browser sees a
 single origin: no CORS, and the admin token never crosses an origin boundary.

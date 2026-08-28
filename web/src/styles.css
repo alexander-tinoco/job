@@ -325,3 +325,118 @@ dialog.confirm p { font-size: 13.5px; line-height: 1.6; color: var(--graphite); 
   border: 1px solid var(--hairline-strong); border-radius: 3px;
   font-family: var(--mono); font-size: 12px; color: var(--graphite); }
 .sent .close-hint { margin-top: 26px; font-size: 13px; color: var(--graphite); }
+
+/* ─── The public site ─── */
+
+.site { max-width: 100%; }
+.site-top {
+  display: flex; align-items: center; gap: 26px;
+  padding: 20px 40px; border-bottom: 1px solid var(--hairline);
+  position: sticky; top: 0; background: rgba(250,248,244,.92);
+  backdrop-filter: blur(8px); z-index: 3;
+}
+.site-top nav { margin-left: auto; display: flex; gap: 24px; }
+.site-top nav a { font-size: 13px; color: var(--graphite); text-decoration: none; }
+.site-top nav a:hover { color: var(--ink); text-decoration: underline; }
+
+.hero { padding: 92px 40px 64px; max-width: 1020px; }
+.hero h1 {
+  font: 600 clamp(38px, 6.2vw, 68px)/1.05 var(--serif);
+  letter-spacing: -0.028em; margin: 0 0 26px;
+}
+.hero-lede { font: 400 clamp(16px, 1.9vw, 20px)/1.55 var(--serif); color: #37332e; max-width: 33em; }
+
+/* The buyer's own document, set as a document. */
+.rubric-sheet {
+  margin: 0 40px 84px; padding: 34px 38px 30px; max-width: 940px;
+  background: var(--sheet); border: 1px solid var(--hairline-strong); border-radius: 3px;
+  box-shadow: 0 1px 2px rgba(26,24,21,.05), 0 18px 40px -28px rgba(26,24,21,.30);
+}
+.sheet-label {
+  font: 600 11px/1 var(--sans); text-transform: uppercase; letter-spacing: .1em;
+  color: var(--graphite); margin: 0 0 20px;
+}
+.rubric-table { width: 100%; border-collapse: collapse; }
+.rubric-table th {
+  font: 600 10px/1 var(--sans); text-transform: uppercase; letter-spacing: .08em;
+  color: var(--graphite); text-align: left; padding-bottom: 9px;
+  border-bottom: 1px solid var(--hairline-strong);
+}
+.rubric-table th.right, .rubric-table td.right { text-align: right; }
+.rubric-table td { padding: 15px 0; border-bottom: 1px solid var(--hairline); vertical-align: top; }
+.rubric-table td.num { width: 38px; font-size: 12px; }
+.rubric-table .muted { color: var(--graphite); }
+.criterion-name { display: inline; font: 500 15px/1.4 var(--sans); }
+.req {
+  font: 500 10px/1 var(--sans); text-transform: uppercase; letter-spacing: .06em;
+  color: var(--graphite); border: 1px solid var(--hairline-strong);
+  border-radius: 2px; padding: 2px 5px; margin-left: 8px; vertical-align: 2px;
+}
+.criterion-ask { display: block; font: 400 14px/1.5 var(--serif); color: var(--graphite); margin-top: 5px; }
+.rubric-table tr.sum td { border-bottom: 0; padding-top: 16px; font-size: 13px; color: var(--graphite); }
+.rubric-table tr.sum td.num { font-weight: 600; color: var(--ink); }
+
+.band { padding: 76px 40px; max-width: 1020px; }
+.band.quiet { background: var(--sheet); border-block: 1px solid var(--hairline); max-width: none; }
+.band.quiet > * { max-width: 1020px; }
+.band h2, .tamper h2, .cost h2, .who h2 {
+  font: 600 clamp(24px, 3.1vw, 34px)/1.18 var(--serif);
+  letter-spacing: -0.018em; margin: 0 0 18px; max-width: 20em;
+}
+.band-lede { font: 400 16px/1.6 var(--serif); color: #37332e; max-width: 33em; margin-bottom: 34px; }
+.band-foot { font: 400 14.5px/1.62 var(--serif); color: var(--graphite); max-width: 34em; margin-top: 30px; }
+
+.findings { list-style: none; margin: 0; padding: 0; max-width: 780px; }
+.findings > li { padding: 20px 0; border-bottom: 1px solid var(--hairline); }
+.findings > li:first-child { border-top: 1px solid var(--hairline-strong); }
+.finding-row { display: flex; align-items: baseline; gap: 14px; }
+.finding-title { font: 500 15px/1.3 var(--sans); flex: 1; }
+.finding-mark { font-size: 14px; }
+.findings blockquote {
+  margin: 11px 0 0 38px; padding: 3px 0 3px 13px;
+  border-left: 2px solid var(--amber); background: var(--amber-wash);
+  font: 400 14px/1.6 var(--serif); padding-right: 12px; border-radius: 0 2px 2px 0;
+}
+.findings cite { display: block; font-size: 11px; font-style: normal; color: #74450a; margin-top: 5px; }
+
+.tamper { padding: 76px 40px; max-width: 1020px; }
+.tamper > p { font: 400 16px/1.6 var(--serif); color: #37332e; max-width: 33em; }
+.tamper-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 30px 0 4px; max-width: 780px; }
+.tamper-card {
+  border: 1px solid var(--hairline-strong); border-radius: 3px; background: var(--sheet);
+  padding: 20px 22px; display: flex; flex-direction: column; gap: 16px; min-height: 132px;
+}
+.tamper-card.marked { border-color: #e0bd7e; background: var(--amber-wash); }
+.tamper-label { font: 400 13.5px/1.5 var(--serif); color: var(--graphite); flex: 1; }
+.tamper-card.marked .tamper-label { color: #74450a; }
+.tamper-score { font-size: 34px; line-height: 1; }
+.tamper-foot { font: 400 14.5px/1.62 var(--serif); color: var(--graphite); max-width: 36em; margin-top: 22px; }
+
+.steps { list-style: none; margin: 0; padding: 0; max-width: 720px; }
+.steps li { display: flex; gap: 16px; padding: 15px 0; border-bottom: 1px solid var(--hairline); }
+.steps li:last-child { border-bottom: 0; }
+.step-n { color: var(--graphite); font-size: 12px; padding-top: 3px; width: 18px; flex: none; }
+.steps span:last-child { font: 400 15px/1.58 var(--serif); }
+
+.cost { padding: 76px 40px; max-width: 1020px; }
+.cost-figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: 30px; max-width: 780px; margin-top: 30px; }
+.cost-figures .big { font-size: clamp(28px, 3.6vw, 40px); line-height: 1; display: block; }
+.cost-label { display: block; font-size: 13px; line-height: 1.45; color: var(--graphite); margin-top: 10px; }
+
+.who { padding: 76px 40px 90px; max-width: 1020px; }
+.who p { font: 400 16px/1.65 var(--serif); max-width: 34em; margin-bottom: 16px; }
+
+.site-foot {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  padding: 26px 40px; border-top: 1px solid var(--hairline); background: var(--sheet);
+}
+.foot-note { font-size: 13px; color: var(--graphite); flex: 1; }
+.foot-link { font-size: 13px; color: var(--graphite); }
+
+@media (max-width: 760px) {
+  .site-top, .hero, .band, .tamper, .cost, .who, .site-foot { padding-inline: 22px; }
+  .rubric-sheet { margin-inline: 22px; padding: 24px 22px; }
+  .site-top nav { gap: 16px; }
+  .tamper-pair, .cost-figures { grid-template-columns: 1fr; }
+  .hero { padding-top: 58px; }
+}
