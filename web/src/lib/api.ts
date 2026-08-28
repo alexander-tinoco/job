@@ -14,6 +14,8 @@ import type {
  * all that is needed, and the panel is same-origin behind nginx anyway.
  */
 export class Unauthorized extends Error {}
+/** Throttled after repeated failures. Distinct so the form can say so. */
+export class RateLimited extends Error {}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
@@ -27,6 +29,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
   if (response.status === 401) {
     throw new Unauthorized("Your session has expired.");
+  }
+  if (response.status === 429) {
+    throw new RateLimited("Too many attempts.");
   }
   if (!response.ok) {
     const body = await response.text();

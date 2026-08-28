@@ -211,7 +211,7 @@ def search(session: Session, opening: JobOpening, query: str, limit: int) -> Sea
     # the résumé answers "who has migrated a monolith"; a substring over the name
     # answers "Vargas" — and matching only the body meant a surname found nobody
     # unless it happened to appear in the prose.
-    like = f"%{query.strip()}%"
+    like = f"%{_escape_like(query.strip())}%"
     rows = session.execute(
         select(
             Application, Candidate.full_name, Evaluation.overall_score, ResumeDocument.visible_text
@@ -223,8 +223,8 @@ def search(session: Session, opening: JobOpening, query: str, limit: int) -> Sea
             Application.job_opening_id == opening.id,
             or_(
                 ResumeDocument.search_vector.op("@@")(tsquery),
-                Candidate.full_name.ilike(like),
-                Candidate.email.ilike(like),
+                Candidate.full_name.ilike(like, escape="\\"),
+                Candidate.email.ilike(like, escape="\\"),
             ),
         )
         .order_by(Evaluation.overall_score.desc().nullslast())
@@ -241,6 +241,17 @@ def search(session: Session, opening: JobOpening, query: str, limit: int) -> Sea
         for application, name, score, text in rows
     ]
     return SearchResults(query=query, hits=hits)
+
+
+def _escape_like(value: str) -> str:
+    """Make LIKE wildcards literal.
+
+    Not an injection defence — every value here is a bound parameter and always
+    was. This is about meaning: `%` and `_` are wildcards to LIKE, so a search
+    for "%" would otherwise match every candidate in the opening, and "a_a"
+    would match "ada". The user typed characters, not a pattern.
+    """
+    return value.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
 
 
 def _as_int(value: object, default: int) -> int:

@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { SignOutIcon } from "../components/icons";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Confirm } from "../components/Confirm";
+import { CollapseIcon, ExpandIcon, SignOutIcon } from "../components/icons";
 import type { User } from "../lib/api";
 import { Unauthorized, api } from "../lib/api";
 import type { ApplicationDetail, Opening, RankedPage } from "../lib/types";
@@ -25,6 +26,9 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
   const [query, setQuery] = useState("");
   const [matches, setMatches] = useState<Set<string> | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [confirmingSignOut, setConfirmingSignOut] = useState(false);
+  const plate = useRef<HTMLDivElement>(null);
 
   const fail = useCallback(
     (caught: unknown) => {
@@ -64,6 +68,12 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
 
   useEffect(reloadDetail, [reloadDetail]);
 
+  // Each application opens at its own beginning. Landing halfway down the
+  // previous candidate's page is how a reviewer misses the summary entirely.
+  useEffect(() => {
+    plate.current?.scrollTo({ top: 0 });
+  }, [selected]);
+
   // Search narrows the ranking rather than replacing it, so the ordering the
   // panel exists to show is never lost.
   useEffect(() => {
@@ -100,7 +110,13 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
   const waiting = page ? page.total - page.evaluated : 0;
 
   return (
-    <div className="bench">
+    <div className={focused ? "bench focused" : "bench"}>
+      {focused && (
+        <button className="reopen" onClick={() => setFocused(false)}>
+          <ExpandIcon /> Show the list
+        </button>
+      )}
+
       <div className="register exhibits">
         <div className="masthead">
           <div className="masthead-top">
@@ -108,8 +124,16 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
             <span className="spacer" />
             <button
               className="control quiet"
+              title="Hide the list and read one application"
+              aria-label="Hide the list"
+              onClick={() => setFocused(true)}
+            >
+              <CollapseIcon />
+            </button>
+            <button
+              className="control quiet"
               title={`Signed in as ${me.email}`}
-              onClick={() => api.logout().finally(onSignedOut)}
+              onClick={() => setConfirmingSignOut(true)}
             >
               <SignOutIcon /> Sign out
             </button>
@@ -191,7 +215,7 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
         )}
       </div>
 
-      <div className="register">
+      <div className="register" ref={plate}>
         {detail ? (
           <Plate
             detail={detail}
@@ -208,6 +232,16 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
           </p>
         )}
       </div>
+
+      <Confirm
+        open={confirmingSignOut}
+        title="Sign out of Verbatim?"
+        body="You will need your email and password to get back in. Anything you have decided is already saved."
+        confirmLabel="Sign out"
+        destructive
+        onCancel={() => setConfirmingSignOut(false)}
+        onConfirm={() => api.logout().finally(onSignedOut)}
+      />
     </div>
   );
 }

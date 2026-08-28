@@ -364,3 +364,57 @@ def test_a_page_beyond_the_document_is_a_404(
         ).status_code
         == 404
     )
+
+
+@pytest.mark.parametrize(
+    "hostile",
+    [
+        "' OR 1=1 --",
+        "'; DROP TABLE applications; --",
+        '" OR ""="',
+        "\\'; SELECT pg_sleep(5); --",
+    ],
+)
+def test_search_is_not_injectable(
+    client: TestClient, session: Session, auth: dict[str, str], hostile: str
+) -> None:
+    """Every value reaches Postgres as a bound parameter, never as SQL."""
+    opening = make_opening(session, slug=f"panel-inj-{abs(hash(hostile)) % 9999}")
+    _evaluated(session, opening.id, f"inj{abs(hash(hostile)) % 9999}@example.com")
+    session.commit()
+
+    response = client.get(
+        f"/api/v1/openings/{opening.id}/search", params={"q": hostile}, headers=auth
+    )
+
+    assert response.status_code == 200
+    assert response.json()["hits"] == []
+    # The table is still there, which a successful injection would have changed.
+    assert session.scalar(select(Application)) is not None
+
+
+@pytest.mark.parametrize("wildcard", ["%%", "__", "a_a", "%da%"])
+def test_like_wildcards_are_treated_as_characters(
+    client: TestClient, session: Session, auth: dict[str, str], wildcard: str
+) -> None:
+    """Otherwise "%%" would return every candidate and "a_a" would match "Ada"."""
+    opening = make_opening(session, slug=f"panel-wild-{abs(hash(wildcard)) % 9999}")
+    _evaluated(session, opening.id, f"wild{abs(hash(wildcard)) % 9999}@example.com")
+    session.commit()
+
+    body = client.get(
+        f"/api/v1/openings/{opening.id}/search", params={"q": wildcard}, headers=auth
+    ).json()
+
+    assert body["hits"] == []
+
+
+def test_a_one_character_search_is_refused(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    opening = make_opening(session, slug="panel-tooshort")
+    session.commit()
+
+    response = client.get(f"/api/v1/openings/{opening.id}/search", params={"q": "a"}, headers=auth)
+
+    assert response.status_code == 422

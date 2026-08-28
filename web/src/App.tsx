@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { Apply, Received } from "./apply/Apply";
 import type { User } from "./lib/api";
-import { api } from "./lib/api";
+import { PasswordField } from "./components/PasswordField";
+import { RateLimited, api } from "./lib/api";
 import { useRoute } from "./lib/router";
 import { Panel } from "./panel/Panel";
 
@@ -47,9 +48,16 @@ function SignIn({ onDone }: { onDone: (user: User) => void }) {
     try {
       onDone(await api.login(email.trim(), password));
     } catch (caught) {
-      // Whatever the server said — and it answers the same for an unknown email
-      // as for a wrong password.
-      setError(caught instanceof Error ? caught.message : String(caught));
+      // One message for every credential failure, whatever went wrong. Saying
+      // "no such account" would turn this form into a way to find out who has
+      // one. The lockout is the single exception: telling someone their password
+      // is wrong while the account is throttled would have them retry for
+      // fifteen minutes, and it reveals nothing about whether the account exists.
+      setError(
+        caught instanceof RateLimited
+          ? "Too many attempts. Try again in a few minutes."
+          : "Email or password incorrect.",
+      );
     } finally {
       setBusy(false);
     }
@@ -74,13 +82,7 @@ function SignIn({ onDone }: { onDone: (user: User) => void }) {
         </label>
         <label className="stack">
           <span>Password</span>
-          <input
-            className="field"
-            type="password"
-            autoComplete="current-password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-          />
+          <PasswordField value={password} onChange={setPassword} />
         </label>
         <button className="control primary" type="submit" disabled={busy || !email || !password}>
           {busy ? "Signing in…" : "Sign in"}

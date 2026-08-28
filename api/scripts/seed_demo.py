@@ -9,6 +9,7 @@ triggered synchronously per candidate — about a cent for the whole set.
 
 from __future__ import annotations
 
+import http.cookiejar
 import os
 import sys
 import urllib.error
@@ -26,19 +27,70 @@ from typing import Any  # noqa: E402
 from scripts.compare_models import COMPANY_CONTEXT, CRITERIA, JOB_TITLE, WEIGHTS  # noqa: E402
 from tests.golden.candidates import CANDIDATES  # noqa: E402
 
+DESCRIPTION = """Mercadis is a marketplace for independent food producers. Forty thousand
+sellers, forty million sessions a month, and a team of sixty people in Madrid and remote.
+
+We are hiring our third analyst. You would sit with the product team, not in a reporting
+function: the questions arrive as arguments nobody can settle, and your job is to settle them.
+
+WHAT YOU WOULD DO
+
+Design and read experiments. We ship weekly and run roughly twenty tests a quarter, and we
+would rather run five good ones than twenty that measure nothing. You would own the design as
+well as the readout.
+
+Model the data. Our warehouse is Snowflake with dbt, and the model has grown faster than
+anyone maintained it. Part of this role is making it something people trust again.
+
+Answer the awkward questions. Why did checkout conversion drop for one seller tier and not
+another. Whether the new fee structure paid for itself. What actually happens to a seller in
+their first ninety days.
+
+WHAT WE ARE LOOKING FOR
+
+Real SQL, not a course. You should be comfortable with window functions, and comfortable
+saying a query is too slow and fixing it.
+
+Statistics you can explain to someone who does not have them. We care much more about whether
+you know when an experiment is unreadable than about which test you reach for.
+
+Evidence of impact. A number attached to a decision that changed. "Built a dashboard" tells us
+nothing; "cut refund handling time 30% after the analysis showed where it went" tells us a lot.
+
+Comfort with Looker or an equivalent, and enough Python to work with pandas.
+
+NICE, NOT REQUIRED
+
+dbt, causal inference beyond A/B, marketplace or two-sided-market experience, Spanish.
+
+HOW WE HIRE
+
+We read every application. If there is a fit we will send you a short take-home based on real
+anonymised data, then two conversations: one technical, one with the team you would join. Four
+weeks end to end, and we tell you either way."""
+
 BASE = sys.argv[1] if len(sys.argv) > 1 else "http://localhost:8000"
-TOKEN = os.environ.get("ADMIN_TOKEN", "demo-token")
+EMAIL = os.environ.get("SEED_EMAIL", "demo@acme.com")
+PASSWORD = os.environ.get("SEED_PASSWORD", "correct-horse-battery")
+
+# The API authenticates with a session cookie, so the seed signs in like a person.
+_jar = http.cookiejar.CookieJar()
+_opener = urllib.request.build_opener(urllib.request.HTTPCookieProcessor(_jar))
 PDFS = Path(__file__).resolve().parent.parent / "tests" / "golden" / "pdfs"
 
 
 def call(method: str, path: str, body: object = None) -> Any:
     data = json.dumps(body).encode() if body is not None else None
     request = urllib.request.Request(f"{BASE}{path}", data=data, method=method)
-    request.add_header("X-Admin-Token", TOKEN)
     if data:
         request.add_header("Content-Type", "application/json")
-    with urllib.request.urlopen(request, timeout=120) as response:
-        return json.loads(response.read())
+    with _opener.open(request, timeout=120) as response:
+        raw = response.read()
+        return json.loads(raw) if raw else None
+
+
+def sign_in() -> None:
+    call("POST", "/api/v1/auth/login", {"email": EMAIL, "password": PASSWORD})
 
 
 def upload(slug: str, name: str, email: str, pdf: Path) -> None:
@@ -61,11 +113,12 @@ def upload(slug: str, name: str, email: str, pdf: Path) -> None:
         f"{BASE}/openings/{slug}/apply", data=b"".join(parts), method="POST"
     )
     request.add_header("Content-Type", f"multipart/form-data; boundary={boundary}")
-    with urllib.request.urlopen(request, timeout=120):
+    with _opener.open(request, timeout=120):
         pass
 
 
 def main() -> int:
+    sign_in()
     company = call("POST", "/api/v1/companies", {"name": "Mercadis"})
     slug = "data-analyst-demo"
     opening = call(
@@ -74,7 +127,7 @@ def main() -> int:
         {
             "title": JOB_TITLE,
             "slug": slug,
-            "description": "Own the questions the product team cannot answer yet.",
+            "description": DESCRIPTION,
             "company_context": COMPANY_CONTEXT,
             "criteria": [
                 {

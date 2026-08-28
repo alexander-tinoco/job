@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { Confirm } from "../components/Confirm";
 import { navigate } from "../lib/router";
 
 interface PublicOpening {
@@ -58,7 +59,7 @@ export function Apply({ slug }: { slug: string }) {
       </header>
 
       <div className="apply-body">
-        {opening.description && <p className="description">{opening.description}</p>}
+        {opening.description && <Description text={opening.description} />}
         {opening.status === "closed" ? (
           <>
             <h2>Applications are closed</h2>
@@ -83,7 +84,9 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [armed, setArmed] = useState(false);
+  const [confirming, setConfirming] = useState(false);
   const input = useRef<HTMLInputElement>(null);
+  const form = useRef<HTMLFormElement>(null);
 
   function choose(candidate: File | undefined) {
     if (!candidate) return;
@@ -95,23 +98,30 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
     setFile(candidate);
   }
 
-  async function submit(event: React.FormEvent<HTMLFormElement>) {
+  function review(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!file) {
       setError("Please attach your résumé as a PDF.");
       return;
     }
+    setError(null);
+    // An application cannot be unsent, and a candidate gets one.
+    setConfirming(true);
+  }
+
+  async function send() {
+    if (!file || !form.current) return;
     setSending(true);
     setError(null);
 
-    const form = new FormData(event.currentTarget);
-    form.set("consent", "true");
-    form.set("resume", file);
+    const body = new FormData(form.current);
+    body.set("consent", "true");
+    body.set("resume", file);
 
     try {
       const response = await fetch(`/openings/${encodeURIComponent(opening.slug)}/apply`, {
         method: "POST",
-        body: form,
+        body,
       });
       if (!response.ok) {
         const body = (await response.json().catch(() => null)) as { detail?: unknown } | null;
@@ -128,11 +138,12 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : String(caught));
       setSending(false);
+      setConfirming(false);
     }
   }
 
   return (
-    <form onSubmit={submit} noValidate>
+    <form ref={form} onSubmit={review} noValidate>
       <h2>Apply</h2>
 
       <label className="stack">
@@ -219,23 +230,71 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
       </label>
 
       <button className="control primary" type="submit" disabled={!consent || sending}>
-        {sending ? "Sending…" : "Send application"}
+        Send application
       </button>
       {error && <p className="notice-error">{error}</p>}
+
+      <Confirm
+        open={confirming}
+        title="Send your application?"
+        body={`Your details and résumé go to ${opening.company_name}. You can apply to this opening only once, so check your file is the right one before sending.`}
+        confirmLabel="Send it"
+        busy={sending}
+        onCancel={() => !sending && setConfirming(false)}
+        onConfirm={send}
+      />
     </form>
   );
 }
 
+function Description({ text }: { text: string }) {
+  return (
+    <p className="description">
+      {text.split("\n").map((line, index) =>
+        /^[A-Z][A-Z ,&]{3,}$/.test(line.trim()) ? (
+          <b key={index}>{line.trim()}</b>
+        ) : (
+          // The newline must be inside the braces: bare "\n" in JSX text is two
+          // literal characters, and white-space: pre-wrap then prints them.
+          <span key={index}>{`${line}\n`}</span>
+        ),
+      )}
+    </p>
+  );
+}
+
 export function Received({ reference }: { reference: string }) {
+  useEffect(() => {
+    document.title = "Application sent";
+  }, []);
+
   return (
     <div className="apply">
-      <div className="receipt">
+      <div className="sent">
+        <svg
+          className="tick"
+          viewBox="0 0 40 40"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.6"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden
+        >
+          <circle cx="20" cy="20" r="17" />
+          <path d="M12.5 20.5 17.8 26 27.5 14.5" />
+        </svg>
         <h1>Your application is in</h1>
         <p>
-          Someone will read it. If your experience fits the role, you will hear from the hiring
-          team directly.
+          A person will read it. Every application to this opening is read; none is filtered out
+          automatically.
         </p>
-        <p className="num">Reference {reference.slice(0, 8)}</p>
+        <p>
+          If your experience fits the role, the hiring team will contact you by email. You do not
+          need to do anything else.
+        </p>
+        <p className="reference">Reference {reference.slice(0, 8)}</p>
+        <p className="close-hint">You can close this tab.</p>
       </div>
     </div>
   );

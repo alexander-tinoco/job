@@ -54,8 +54,14 @@ The seed publishes one opening. Its public page is:
 **http://localhost:5173/apply/data-analyst-demo**
 
 This is the hiring company's page, not Verbatim's: Mercadis leads, and Verbatim signs once at
-the foot. The applicant never sees the rubric and never learns a score. Sending requires the
-consent box, which starts unchecked — GDPR art. 22, not a UI flourish.
+the foot. The opening is written the way a company writes one — what the team does, what the
+role owns, what they are looking for, and how they hire.
+
+The applicant never sees the rubric and never learns a score. Sending requires the consent box,
+which starts unchecked — GDPR art. 22, not a UI flourish — and then asks for confirmation,
+because an application cannot be unsent and a candidate gets one. The page that follows says
+the application is in, that a person will read it, that nothing is filtered out automatically,
+and that they can close the tab.
 
 Apply with any PDF, then open the panel. Your application appears **at the top of the list**,
 marked *awaiting examination* and with no score: extraction is deterministic and runs on upload,
@@ -390,12 +396,41 @@ observations about the person. `review_flags` are our own verification's objecti
 unfound quote means *our evaluation* has a problem, not the candidate. Shown together they
 would invite exactly the wrong reading.
 
+**The list collapses.** Reviewing one application is a reading task, and the ranking beside it
+is a distraction once the choice is made. Selecting a candidate always opens their page at the
+top; landing halfway down the previous one is how a reviewer misses the summary.
+
 **A tampered résumé is shown, not suppressed.** Its hidden text appears as evidence with the
 reason and page, and the score beside it is computed from the visible text only.
 
 **Every decision needs a reason and an author**, and both go to `AuditLog` alongside the model's
 score — the disagreement between human and model is the most valuable data the product produces.
 The decision never overwrites the evaluation.
+
+### Sign-in and session behaviour
+
+Every credential failure answers **“Email or password incorrect.”** — the same words for a
+wrong password, a disabled account and an email nobody has. Anything more specific turns the
+form into a way to find out who has an account. The one exception is the lockout, which says
+so: telling a throttled person their password is wrong would have them retry for fifteen
+minutes, and it reveals nothing, since the throttle counts per address as well as per email.
+
+The password field has a visibility toggle, off by default. Hiding what someone types defends
+against a shoulder, not an attacker, and it causes more failed sign-ins than it prevents.
+
+Signing out asks first: a review session is long, and losing your place to a misplaced click is
+worse than one extra keystroke.
+
+### Search cannot be injected
+
+Every value reaches Postgres as a bound parameter through SQLAlchemy expressions; the only raw
+SQL in the codebase is `SELECT 1` in the readiness probe, with no input at all. Tests fire
+`' OR 1=1 --` and `'; DROP TABLE applications; --` at the search endpoint and assert the tables
+survive.
+
+Separately, `%` and `_` are escaped before they reach `ILIKE`. Not an injection defence — a
+bound parameter was never injectable — but a search for `%` would otherwise match every
+candidate in the opening, and `a_a` would match “Ada”. The user typed characters, not a pattern.
 
 ### Security notes
 

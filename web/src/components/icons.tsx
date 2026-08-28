@@ -56,3 +56,35 @@ export const SignOutIcon = () => (
     <path d="M12.8 8H6.6" />
   </svg>
 );
+
+export const EyeIcon = () => (
+  <svg {...base}>
+    <path d="M1.6 8S3.9 3.6 8 3.6 14.4 8 14.4 8 12.1 12.4 8 12.4 1.6 8 1.6 8Z" />
+    <circle cx="8" cy="8" r="2.1" />
+  </svg>
+);
+
+export const EyeOffIcon = () => (
+  <svg {...base}>
+    <path d="M6.3 4A6.7 6.7 0 0 1 8 3.8c4.1 0 6.4 4.2 6.4 4.2a12 12 0 0 1-2 2.6" />
+    <path d="M3.9 4.9A12 12 0 0 0 1.6 8s2.3 4.2 6.4 4.2c1 0 1.9-.2 2.7-.6" />
+    <path d="M6.7 6.7a1.9 1.9 0 0 0 2.7 2.7" />
+    <path d="M2 2l12 12" />
+  </svg>
+);
+
+export const CollapseIcon = () => (
+  <svg {...base}>
+    <path d="M2.4 2.8v10.4" />
+    <path d="M13.6 8H6.2" />
+    <path d="M8.9 5.3 6.2 8l2.7 2.7" />
+  </svg>
+);
+
+export const ExpandIcon = () => (
+  <svg {...base}>
+    <path d="M2.4 2.8v10.4" />
+    <path d="M6.2 8h7.4" />
+    <path d="M10.9 5.3 13.6 8l-2.7 2.7" />
+  </svg>
+);
