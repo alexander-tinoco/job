@@ -62,5 +62,7 @@ li{font-family:var(--serif);font-size:10.5pt;line-height:1.55;margin-bottom:2mm}
 /* Full-page mobile captures are very tall; show the top of the screen at a
    height the page can actually hold. */
 .three figure img { max-height: 118mm; object-fit: cover; object-position: top; }
+/* Already cropped to the form; showing all of it is the point. */
+.three figure.whole img { max-height: none; object-fit: contain; }
 .panel-shot img { max-height: 84mm; object-fit: cover; object-position: top; }
 .tall img { max-height: 150mm; object-fit: cover; object-position: top; }

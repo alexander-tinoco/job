@@ -18,9 +18,10 @@ Then, with a Chromium on disk:
 
 ```bash
 cd docs/deck
-node capture.mjs  <path-to-chrome>   # screens 01–09
-node capture2.mjs <path-to-chrome>   # screens 10–13
-node topdf.mjs    <path-to-chrome>   # renders Verbatim.pdf
+node capture.mjs        <path-to-chrome>   # screens 01–09
+node capture2.mjs       <path-to-chrome>   # screens 10–13
+node recapture-form.mjs <path-to-chrome>   # screen 02, clipped to the form
+node topdf.mjs          <path-to-chrome>   # renders Verbatim.pdf
 ```
 
 `puppeteer-core` is used rather than `puppeteer` so it reuses a Chromium already on the machine
@@ -32,6 +33,7 @@ in the product's own type and palette.
 | | |
 |---|---|
 | 01–04 | The applicant: the opening on a phone, the form, the confirmation, the receipt |
+| | Screen 02 is clipped to the form itself rather than captured full-page: a tall mobile capture scaled into a column shows the header and loses the fields, which is the part worth seeing |
 | 05–07 | Sign-in, the ranked list, search by surname |
 | 08–09 | Findings with cited evidence, and the raking light linking a quote to its position |
 | 10 | The concealed layer — the tampered résumé scoring the same as its clean twin |
