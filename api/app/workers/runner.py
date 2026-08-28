@@ -13,6 +13,7 @@ import contextlib
 import logging
 
 from app.db.session import SessionLocal
+from app.services import lifecycle
 from app.services.queue import now
 from app.workers import scheduler
 
@@ -28,18 +29,23 @@ def tick() -> None:
             stored = scheduler.collect_once(session)
             expired = scheduler.expire_stale(session)
             outcome = scheduler.send_once(session, now().hour)
+            # Retention runs on the same tick. "Deleted after six months" is a
+            # claim on the application page, so nothing may depend on a person
+            # remembering to press a button.
+            swept = lifecycle.sweep(session)
             session.commit()
         except Exception:
             session.rollback()
             logger.exception("scheduler_tick_failed")
             return
-    if stored or expired or outcome.sent:
+    if stored or expired or outcome.sent or swept.applications:
         logger.info(
-            "scheduler_tick collected=%s expired=%s sent=%s skipped=%s",
+            "scheduler_tick collected=%s expired=%s sent=%s skipped=%s retained_deleted=%s",
             stored,
             expired,
             outcome.sent,
             outcome.skipped,
+            swept.applications,
         )
 
 

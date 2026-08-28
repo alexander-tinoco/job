@@ -229,6 +229,38 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Retention, access and erasure
+
+The application page tells a candidate their résumé is deleted six months after the opening
+closes and that they can ask for it sooner. These are the endpoints that make those true.
+
+```
+POST /api/v1/retention/sweep            delete what is past the window
+GET  /api/v1/data-subject/{email}       everything held about one person
+POST /api/v1/data-subject/erase         delete it
+GET  /api/v1/openings/{id}/export.csv   the opening's results
+GET  /api/v1/audit                      who did what
+```
+
+**Retention also runs on the worker's tick**, not only when someone calls the endpoint. A
+promise on a public page cannot depend on a person remembering to press a button.
+
+The window is measured **from the opening closing**, not from the application arriving: someone
+who applied on day one and someone who applied on the last day belong to the same round and are
+kept for the same period.
+
+**Files are deleted before rows.** A row without its file is a recoverable inconsistency; a file
+without its row is personal data nobody can find, list or delete.
+
+**Erasure keeps the audit trail, anonymised.** The actor becomes `erased` and the entry is
+marked, but the record survives — deleting it would erase the proof that a human made each
+decision, which is the record the same regulation requires. The erasure entry itself carries no
+email: writing down who asked to be forgotten would defeat the exercise.
+
+**The CSV neutralises formulas.** A candidate chooses their own name, a name can start with `=`,
+and Excel and Sheets will run it. Cells beginning with `=`, `+`, `-` or `@` are prefixed with a
+quote.
+
 ## Cost
 
 Everything below is measured, not estimated. Reproduce with the scripts in `api/scripts/`;

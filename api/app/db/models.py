@@ -119,7 +119,13 @@ class Candidate(Base, TimestampMixin):
     # Explicit, timestamped consent. Required before any processing (plan §8).
     consented_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
 
-    applications: Mapped[list[Application]] = relationship(back_populates="candidate")
+    # Deleting a candidate deletes their applications. Without this SQLAlchemy
+    # nullifies the foreign key instead, which NOT NULL rejects, so erasure
+    # would fail outright. passive_deletes defers to the database's own
+    # ON DELETE CASCADE rather than loading every child to delete it.
+    applications: Mapped[list[Application]] = relationship(
+        back_populates="candidate", cascade="all, delete-orphan", passive_deletes=True
+    )
 
 
 class Application(Base, TimestampMixin):

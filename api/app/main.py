@@ -9,6 +9,7 @@ from app.api.v1 import (
     applications,
     auth,
     evaluations,
+    lifecycle,
     openings,
     outreach,
     panel,
@@ -46,6 +47,7 @@ app.include_router(applications.router)
 app.include_router(evaluations.router)
 app.include_router(panel.router)
 app.include_router(outreach.router)
+app.include_router(lifecycle.router)
 
 
 @app.get("/health")
