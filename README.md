@@ -587,6 +587,10 @@ cd api
 Autogenerate does not emit `DROP TYPE` for native enums. If you add one, drop it explicitly in
 the migration's `downgrade()` or the next `upgrade` will fail with "type already exists".
 
+`tests/test_migrations.py` enforces this: it runs the full up → down → up cycle against a
+throwaway database and asserts no enum type survives a downgrade. That test exists because this
+note alone did not stop the defect shipping a second time.
+
 ## Layout
 
 | Path | What lives there |
