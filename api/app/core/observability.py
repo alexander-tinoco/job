@@ -22,10 +22,12 @@ this project: log the `application_id`, never the candidate.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import time
 import uuid
+from contextvars import ContextVar
 from typing import Any
 
 from opentelemetry import trace
@@ -79,6 +81,55 @@ queue_oldest_seconds = Gauge(
     "Age of the oldest row still waiting. The number that says a batch stalled.",
     registry=REGISTRY,
 )
+
+
+# --- The canonical log line ---------------------------------------------
+#
+# One wide line per request instead of a scatter of narrow ones. The difference
+# in practice: answering "what happened to that application?" is a single
+# search returning a single line that already holds every fact, rather than
+# stitching together an access log, a handler's message and a stack trace by
+# timestamp and hoping nothing interleaved.
+#
+# Handlers add to it with `note()`, so a fact is recorded where it is known
+# rather than plumbed through return values.
+
+_canonical: ContextVar[dict[str, Any]] = ContextVar("canonical")
+
+request_logger = logging.getLogger("app.request")
+
+
+def begin_request() -> None:
+    _canonical.set({})
+
+
+def note(**fields: Any) -> None:
+    """Add facts to the line this request will emit when it finishes.
+
+    Identifiers only, never candidate content: `application_id`, `batch_id`, a
+    count. The rule is the one that governs every log in this project — the
+    panel can look a person up from an id; a log store should not be able to.
+    """
+    # Outside a request (a worker tick, a CLI run) there is no line to add to,
+    # and losing the note is better than raising into the caller.
+    with contextlib.suppress(LookupError):
+        _canonical.get().update(fields)
+
+
+def emit_request(method: str, route: str, status: int, seconds: float) -> None:
+    fields: dict[str, Any] = {}
+    with contextlib.suppress(LookupError):
+        fields = _canonical.get()
+    request_logger.info(
+        "request",
+        extra={
+            "method": method,
+            "route": route,
+            "status": status,
+            "duration_ms": round(seconds * 1000, 2),
+            **fields,
+        },
+    )
 
 
 def correlation_id() -> str:
@@ -154,6 +205,11 @@ def configure_logging() -> None:
         server = logging.getLogger(name)
         server.handlers = []
         server.propagate = True
+
+    # Silenced, not reformatted. Its line carries strictly less than the
+    # canonical one and would double every request in the log store; the point
+    # of a canonical line is that there is exactly one per request.
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
 
 
 _tracing: TracerProvider | None = None

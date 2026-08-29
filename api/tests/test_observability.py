@@ -282,3 +282,102 @@ def test_the_ansi_copy_of_a_server_message_is_dropped() -> None:
     record.color_message = "\x1b[1mRunning\x1b[0m"
 
     assert "color_message" not in json.loads(observability.JsonFormatter().format(record))
+
+
+# --- The canonical log line ---
+#
+# One wide line per request instead of a scatter of narrow ones: answering
+# "what happened to that application?" becomes a single search returning a
+# single line, rather than stitching an access log, a handler message and a
+# stack trace together by timestamp.
+
+
+def test_one_line_per_request_carries_the_whole_request(
+    client: TestClient, session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    from tests.factories import make_opening
+
+    opening = make_opening(session, slug="canon-one")
+    session.commit()
+
+    with caplog.at_level(logging.INFO, logger="app.request"):
+        client.get(f"/openings/{opening.slug}")
+
+    (record,) = [r for r in caplog.records if r.name == "app.request"]
+    assert record.method == "GET"
+    assert record.route == "/openings/{slug}"
+    assert record.status == 200
+    assert record.duration_ms >= 0
+
+
+def test_a_handler_adds_its_facts_to_the_line(
+    client: TestClient, session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """`note()` records a fact where it is known, not through return values."""
+    from tests.factories import make_opening
+    from tests.pdfs import make_resume
+
+    opening = make_opening(session, slug="canon-note")
+    session.commit()
+
+    with caplog.at_level(logging.INFO, logger="app.request"):
+        response = client.post(
+            f"/openings/{opening.slug}/apply",
+            data={"full_name": "Ada Lovelace", "email": "ada@example.com", "consent": "true"},
+            files={"resume": ("cv.pdf", make_resume(), "application/pdf")},
+        )
+
+    assert response.status_code == 201
+    (record,) = [r for r in caplog.records if r.name == "app.request"]
+    assert record.application_id == response.json()["application_id"]
+    assert record.opening == opening.slug
+    assert record.status == 201
+
+
+def test_the_line_never_carries_the_candidate(
+    client: TestClient, session: Session, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Identifiers only. The panel looks a person up from an id; a log store must not."""
+    from tests.factories import make_opening
+    from tests.pdfs import make_resume
+
+    opening = make_opening(session, slug="canon-pii")
+    session.commit()
+
+    with caplog.at_level(logging.INFO, logger="app.request"):
+        client.post(
+            f"/openings/{opening.slug}/apply",
+            data={"full_name": "Ada Lovelace", "email": "ada@example.com", "consent": "true"},
+            files={"resume": ("cv.pdf", make_resume(), "application/pdf")},
+        )
+
+    (record,) = [r for r in caplog.records if r.name == "app.request"]
+    rendered = observability.JsonFormatter().format(record)
+    assert "ada@example.com" not in rendered
+    assert "Ada Lovelace" not in rendered
+
+
+def test_a_refused_request_still_produces_its_line(
+    client: TestClient, caplog: pytest.LogCaptureFixture
+) -> None:
+    """The failures are the ones worth having a line for."""
+    with caplog.at_level(logging.INFO, logger="app.request"):
+        client.get("/api/v1/openings")
+
+    (record,) = [r for r in caplog.records if r.name == "app.request"]
+    assert record.status == 401
+
+
+def test_a_note_outside_a_request_is_dropped_rather_than_raising() -> None:
+    """Worker ticks and CLI runs call the same services; they have no line."""
+    observability.note(batch_id="batch_1")
+
+
+def test_the_servers_access_log_is_silenced_by_the_canonical_line(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Two lines per request in the log store is exactly what this replaces."""
+    _configure(monkeypatch, LOG_JSON="true")
+    observability.configure_logging()
+
+    assert logging.getLogger("uvicorn.access").level == logging.WARNING

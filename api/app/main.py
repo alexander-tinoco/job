@@ -72,6 +72,7 @@ async def record_request(
     label would mint one metric series per candidate and leak ids into the
     metrics endpoint at the same time.
     """
+    observability.begin_request()
     with observability.Timer() as timer:
         response = await call_next(request)
 
@@ -80,6 +81,8 @@ async def record_request(
     method = request.method
     observability.requests_total.labels(method, template, str(response.status_code)).inc()
     observability.request_seconds.labels(method, template).observe(timer.seconds)
+    # One line per request, holding everything the handlers noted along the way.
+    observability.emit_request(method, template, response.status_code, timer.seconds)
     response.headers["X-Correlation-Id"] = observability.correlation_id()
     return response
 

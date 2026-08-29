@@ -4,6 +4,7 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
 
 from app.api.deps import ClientIp, SessionDep
+from app.core.observability import note
 from app.db.models import ResumeDocument
 from app.schemas.applications import ApplicantDetails, ApplicationReceipt
 from app.services import applications as service
@@ -99,6 +100,10 @@ async def apply(
     ingestion.ingest_application(session, application)
     limits.record_application(session, email, source_ip)
     session.commit()
+
+    # The id, never the candidate: the panel can look a person up from this and
+    # a log store cannot (CLAUDE.md, security rules).
+    note(application_id=str(application.id), opening=opening.slug, state=str(application.state))
 
     return ApplicationReceipt(
         application_id=application.id,

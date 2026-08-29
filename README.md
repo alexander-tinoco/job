@@ -295,6 +295,24 @@ id**, not a second identifier — a log line and its trace are the same thing se
 Requests that are not traced (`/health`, `/ready`, `/metrics` are excluded, or a platform poll
 would bury real traffic) fall back to a random id, which still gathers one request's lines.
 
+**Canonical logs.** One wide line per request rather than a scatter of narrow ones:
+
+```json
+{"ts":"2026-08-29T03:23:58+0000","level":"INFO","logger":"app.request","message":"request",
+ "correlation_id":"22d827687b36e86beba3e0df20897f87","method":"POST",
+ "route":"/openings/{slug}/apply","status":201,"duration_ms":412.3,
+ "application_id":"01a04b28-a41c-7567-86c5-ff7982b43b64","opening":"data-analyst-demo"}
+```
+
+Handlers add to it with `observability.note(...)`, so a fact is recorded where it is known
+rather than plumbed through return values. Answering "what happened to that application?" becomes
+one search returning one line, instead of stitching an access log, a handler message and a stack
+trace together by timestamp. Uvicorn's own access log is **silenced** rather than reformatted: it
+carries strictly less and would double every request in the store.
+
+Identifiers only — `application_id`, never the candidate. A test renders the line and asserts the
+applicant's name and address are absent.
+
 **Logs.** `LOG_JSON=true` gives one JSON object per line. Uvicorn's own loggers are taken over
 explicitly: it sets `propagate = False`, so replacing the root handler leaves the server's output
 — most of what a deployment prints — untouched. That was true here until it was checked against
