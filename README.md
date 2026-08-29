@@ -428,6 +428,45 @@ mark is deliberately distinct from `missing must-haves`, which is the model read
 this one is the applicant's own answer. Screening answers are **excluded from a shared
 shortlist**: visa status and right to work are not for a link sent outside the company.
 
+## Mutation testing
+
+Coverage says a line ran. It does not say a test would have *noticed* had the line behaved
+differently — a line can be covered by a test that passes either way. Mutation testing answers
+that by changing the code on purpose and checking whether the suite goes red.
+
+```bash
+cd api
+.venv/bin/mutmut run          # a few minutes
+.venv/bin/mutmut results
+```
+
+Scoped to the pure logic where a survivor is unambiguously a gap: verification, scoring,
+duplicate detection, throttling, screening. Mutating an endpoint mostly produces mutants killed
+by the framework, which tells you nothing and costs the same. It is slow by nature and stays a
+manual tool — CI runs the coverage floor instead.
+
+```
+615 mutants · 614 killed · 1 survivor
+```
+
+**It found two real gaps in the duplicate estimator**, both invisible to coverage because the
+code was fully covered:
+
+- Dropping `digest_size=8` leaves blake2b's default 64-byte digest. Every property still held —
+  self-similarity, symmetry, the Jaccard estimate — because the comparison only cares about
+  ordering. What changed was the size of what is stored: eight bytes per hash becomes sixty-four,
+  and "1 KB a résumé" becomes eight. Now pinned.
+- `lower()` → `upper()` survived, because a fold applied to both sides preserves equality —
+  except where the directions disagree on length. `"ß".upper()` is `"SS"`, so folding upward
+  would make *Straße* and *Strasse* one document. Which way that goes was a product decision
+  nothing recorded; it is now a named test.
+
+The remaining survivor replaces the whitespace substitution token. It is applied identically to
+both sides of every comparison, so it cannot change any answer the module gives, and a test that
+killed it would be testing the implementation rather than the behaviour. **Chasing 100% past this
+point produces tests that make the number go up and the suite worse**, so the run stops here and
+says so.
+
 ## End-to-end journeys
 
 2,698 lines of front end had no test of any kind: CI ran `tsc --noEmit` and a production build,

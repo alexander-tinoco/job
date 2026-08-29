@@ -31,3 +31,8 @@ web/node_modules/
 .github/skills/
 .github/agents/
 .github/hooks/
+
+# Mutation testing artefacts: a full copy of the tree, rebuilt per run.
+mutants/
+.mutmut-cache
+html/

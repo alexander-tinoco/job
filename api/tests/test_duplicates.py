@@ -294,3 +294,35 @@ def test_the_backfill_fingerprints_only_what_is_missing(session: Session) -> Non
 
     # Idempotent: a second run finds nothing left to do.
     assert duplicates.backfill(session) == 0
+
+
+def test_the_sketch_is_made_of_64_bit_hashes() -> None:
+    """The storage claim, which nothing else was checking.
+
+    Mutation testing found this: dropping `digest_size=8` leaves blake2b's
+    default 64-byte digest. Every property still holds — self-similarity,
+    symmetry, the Jaccard estimate — because the comparison only cares about
+    ordering, so no existing test noticed. What changes is the size of what is
+    stored: eight bytes per hash becomes sixty-four, and "1 KB a résumé" becomes
+    eight.
+    """
+    values = duplicates.sketch(RESUME_TEXT)
+    assert values
+
+    assert all(0 <= value < 2**64 for value in values)
+    assert max(value.bit_length() for value in values) > 32
+
+
+def test_case_folding_goes_down_not_up_and_that_is_a_choice() -> None:
+    """Which way the fold runs is not arbitrary, and nothing pinned it.
+
+    Mutation testing found this: `lower()` → `upper()` survived every test,
+    because a fold applied to both sides preserves equality — except where the
+    two directions disagree on length. `"ß".upper()` is `"SS"`, so folding
+    upward would make *Straße* and *Strasse* one document.
+
+    Folding down keeps them apart, which is the conservative reading: a
+    difference in the text is reported as a difference, and a reviewer decides.
+    """
+    assert duplicates.normalise("Straße") != duplicates.normalise("Strasse")
+    assert duplicates.digest("STRASSE") == duplicates.digest("strasse")

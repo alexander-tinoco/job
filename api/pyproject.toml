@@ -37,6 +37,8 @@ dev = [
     "pytest-cov>=6.0",
     # Property-based tests: the generator finds the inputs nobody thinks of.
     "hypothesis>=6.140",
+    # Mutation testing. Manual, not in CI: it is slow by nature.
+    "mutmut>=3.7",
 ]
 
 [build-system]
@@ -49,6 +51,9 @@ include = ["app*"]
 [tool.ruff]
 line-length = 100
 target-version = "py314"
+# A full copy of the tree, written by `mutmut run`. Linting it checks nothing
+# and, being a duplicate, breaks module resolution.
+extend-exclude = ["mutants"]
 
 [tool.ruff.lint]
 # S is bandit's rule set. It was available and switched off; enabling it found
@@ -106,7 +111,7 @@ warn_unused_configs = true
 warn_redundant_casts = true
 warn_unused_ignores = true
 disallow_untyped_defs = true
-exclude = ["^tests/"]
+exclude = ["^tests/", "^mutants/"]
 
 # Test helpers are imported by scripts, so mypy follows them past the exclude.
 [[tool.mypy.overrides]]
@@ -117,3 +122,35 @@ ignore_errors = true
 [[tool.mypy.overrides]]
 module = ["app.ai.*", "app.ingest.*"]
 strict = true
+
+[tool.mutmut]
+# Mutation testing answers the question coverage cannot: do the tests *notice*
+# when the code changes? A line can be covered by a test that would pass however
+# the line behaved.
+#
+# Scoped to the pure logic where a surviving mutant is unambiguously a gap —
+# verification, scoring, duplicate detection, throttling. Mutating an endpoint
+# mostly produces mutants killed by a framework, which tells you nothing and
+# costs the same to run. It is slow by nature and stays a manual tool:
+#
+#   .venv/bin/mutmut run
+#   .venv/bin/mutmut results
+#
+source_paths = ["app"]
+only_mutate = [
+    "app/ai/verify.py",
+    "app/services/duplicates.py",
+    "app/services/compare.py",
+    "app/services/limits.py",
+    "app/services/screening.py",
+]
+# Only the tests that could plausibly kill these, so a run is minutes not hours.
+pytest_add_cli_args_test_selection = [
+    "tests/test_properties.py",
+    "tests/test_evaluator.py",
+    "tests/test_duplicates.py",
+    "tests/test_compare.py",
+    "tests/test_limits.py",
+    "tests/test_screening.py",
+]
+also_copy = ["tests", "pyproject.toml", "alembic.ini", "alembic"]
