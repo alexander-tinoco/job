@@ -25,6 +25,10 @@ services:
       # cookie being stored. Never false in a deployment.
       COOKIE_SECURE: ${COOKIE_SECURE:-false}
       OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      LOG_JSON: ${LOG_JSON:-false}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      OTEL_ENDPOINT: ${OTEL_ENDPOINT:-}
+      METRICS_TOKEN: ${METRICS_TOKEN:-}
       # Off unless asked for: a loop that starts by accident spends real money.
       WORKER_ENABLED: ${WORKER_ENABLED:-false}
       UPLOADS_DIR: /srv/uploads

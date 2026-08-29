@@ -34,7 +34,7 @@ class Delivery:
 
 def is_configured() -> bool:
     settings = get_settings()
-    return bool(settings.resend_api_key and settings.outreach_from)
+    return bool(settings.resend_api_key.get_secret_value() and settings.outreach_from)
 
 
 def send(to: str, subject: str, body: str) -> Delivery:
@@ -56,7 +56,7 @@ def send(to: str, subject: str, body: str) -> Delivery:
     ).encode("utf-8")
 
     request = urllib.request.Request(ENDPOINT, data=payload, method="POST")
-    request.add_header("Authorization", f"Bearer {settings.resend_api_key}")
+    request.add_header("Authorization", f"Bearer {settings.resend_api_key.get_secret_value()}")
     request.add_header("Content-Type", "application/json")
 
     try:

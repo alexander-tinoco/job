@@ -244,6 +244,53 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Observability
+
+Until this went in, a batch that stalled overnight left no trace anywhere: twelve `logger` calls
+across eight of seventy-five modules, no request context, no metrics, no traces. The first thing
+the new readiness probe reported on the local stack was a real backlog nobody had noticed —
+21 rows pending, the oldest 24 hours old.
+
+**Correlation.** Every response carries `X-Correlation-Id`, and it is the OpenTelemetry **trace
+id**, not a second identifier — a log line and its trace are the same thing seen from two sides.
+Requests that are not traced (`/health`, `/ready`, `/metrics` are excluded, or a platform poll
+would bury real traffic) fall back to a random id, which still gathers one request's lines.
+
+**Logs.** `LOG_JSON=true` gives one JSON object per line. Uvicorn's own loggers are taken over
+explicitly: it sets `propagate = False`, so replacing the root handler leaves the server's output
+— most of what a deployment prints — untouched. That was true here until it was checked against
+a running container rather than a unit test.
+
+**Traces.** Recorded always, exported only when `OTEL_ENDPOINT` is set. An unconfigured
+deployment pays for building a span and nothing else, so the $10/month box stays a $10/month box
+and no collector is required to run the thing.
+
+**Metrics.** `GET /metrics`, Prometheus exposition:
+
+```
+verbatim_requests_total{method,route,status}      verbatim_queue_depth{state}
+verbatim_request_seconds{method,route}            verbatim_queue_oldest_pending_seconds
+verbatim_evaluations_total{outcome}               verbatim_batches_total{outcome}
+verbatim_tokens_total{direction}
+```
+
+The label is the route **template**. `/applications/{application_id}` as a path would mint one
+metric series per candidate and publish their ids at the same time; a test asserts the slug of a
+real opening never appears in the output.
+
+It answers **404 until `METRICS_TOKEN` is set**, then requires `Authorization: Bearer <token>`,
+compared with `hmac.compare_digest`. Queue depth and spend tell an operator what is happening and
+tell an attacker when nobody is looking, so this fails closed like the worker does.
+
+**Readiness.** `/ready` reports the database, the queue (depth by state, and the age of the
+oldest waiting row — depth alone looks identical whether work is flowing or frozen), whether the
+uploads directory is writable, and whether the model key is configured. It never calls OpenAI: a
+probe that spent money every time a platform polled it would be its own incident.
+
+**Only the database returns 503.** A stalled queue or a missing key comes back `degraded` at 200.
+An instance with a frozen batch still serves every page in the panel, and pulling it out of
+rotation would turn a background problem into an outage.
+
 ## Throttling the public endpoints
 
 `POST /openings/{slug}/apply` takes no session — the slug is the invitation — and does real work

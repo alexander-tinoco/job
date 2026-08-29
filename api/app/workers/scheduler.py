@@ -15,6 +15,7 @@ from datetime import timedelta
 from sqlalchemy.orm import Session
 
 from app.ai import batch
+from app.core import observability
 from app.db.models import Application, JobQueue
 from app.db.types import QueueState
 from app.services import queue
@@ -132,6 +133,7 @@ def send_once(session: Session, hour: int) -> SendOutcome:
         raise
 
     queue.mark_sent(session, [row for row, _ in chosen], batch_id)
+    observability.batches_total.labels("submitted").inc()
     logger.info("batch_sent batch_id=%s items=%s", batch_id, len(chosen))
     return SendOutcome(batch_id=batch_id, sent=len(chosen), skipped=pending - len(chosen))
 
@@ -149,6 +151,8 @@ def collect_once(session: Session) -> int:
         if state in {"validating", "in_progress", "finalizing"}:
             continue
         if state in {"failed", "expired", "cancelled"}:
+            observability.batches_total.labels(state).inc()
+            logger.warning("batch_unusable batch_id=%s state=%s", batch_id, state)
             for row in queue.rows_for_batch(session, batch_id).values():
                 queue.mark_failed(session, row, f"batch {state}")
             continue
@@ -164,6 +168,7 @@ def collect_once(session: Session) -> int:
                 )
                 continue
             if result.output is None or matched.application_id is None:
+                observability.evaluations_total.labels("failed").inc()
                 queue.mark_failed(session, matched, result.error or "no output")
                 continue
             application = session.get(Application, matched.application_id)
@@ -172,6 +177,10 @@ def collect_once(session: Session) -> int:
                 continue
             persist_evaluation(session, application, result.output)
             queue.mark_done(session, matched)
+            # The number a bill is made of, recorded where it is actually known.
+            observability.tokens_total.labels("input").inc(result.input_tokens)
+            observability.tokens_total.labels("output").inc(result.output_tokens)
+            observability.evaluations_total.labels("stored").inc()
             stored += 1
 
         for row in rows.values():

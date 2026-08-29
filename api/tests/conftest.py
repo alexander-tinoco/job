@@ -1,18 +1,27 @@
+import os
 from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
-from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
-from sqlalchemy.engine import Engine
-from sqlalchemy.orm import Session
 
-from app.api.deps import get_session
-from app.core.config import get_settings
-from app.db import models  # noqa: F401  -- import registers every table on Base
-from app.db.base import Base
-from app.db.models import User
-from app.main import app
+# Before anything imports the settings. `.env` sits at the repository root and
+# is read by `Settings`, so without this the whole suite runs holding the real
+# OpenAI key — which a failing assertion will happily print. No test may call
+# the API anyway (CLAUDE.md AI rule 12), so the key has no business being here.
+for _secret in ("OPENAI_API_KEY", "RESEND_API_KEY", "METRICS_TOKEN"):
+    os.environ[_secret] = ""
+
+from fastapi.testclient import TestClient  # noqa: E402
+from sqlalchemy import create_engine, text  # noqa: E402
+from sqlalchemy.engine import Engine  # noqa: E402
+from sqlalchemy.orm import Session  # noqa: E402
+
+from app.api.deps import get_session  # noqa: E402
+from app.core.config import get_settings  # noqa: E402
+from app.db import models  # noqa: F401, E402  -- registers every table on Base
+from app.db.base import Base  # noqa: E402
+from app.db.models import User  # noqa: E402
+from app.main import app  # noqa: E402
 
 TEST_DB = "screening_test"
 TEST_EMAIL = "hr@example.com"

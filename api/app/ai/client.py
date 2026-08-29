@@ -38,7 +38,7 @@ class MissingApiKeyError(RuntimeError):
 
 @lru_cache
 def get_client() -> OpenAI:
-    key = get_settings().openai_api_key
+    key = get_settings().openai_api_key.get_secret_value()
     if not key:
         raise MissingApiKeyError("OPENAI_API_KEY is not set. Add it to .env; see .env.example.")
     return OpenAI(api_key=key, timeout=REQUEST_TIMEOUT_SECONDS)

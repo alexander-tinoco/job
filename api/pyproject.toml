@@ -17,6 +17,14 @@ dependencies = [
     # hash costs an attacker RAM per guess, not just cycles.
     "argon2-cffi>=23.1",
     "openai>=1.59",
+    # Observability. Traces are created always and exported only when an OTLP
+    # endpoint is configured, so an unconfigured deployment pays almost nothing
+    # and the $10/month footprint is unchanged.
+    "opentelemetry-sdk>=1.44",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-sqlalchemy>=0.65b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.44",
+    "prometheus-client>=0.26",
 ]
 
 [project.optional-dependencies]
@@ -26,6 +34,7 @@ dev = [
     "httpx>=0.28",
     "ruff>=0.9",
     "mypy>=1.14",
+    "pytest-cov>=6.0",
 ]
 
 [build-system]
