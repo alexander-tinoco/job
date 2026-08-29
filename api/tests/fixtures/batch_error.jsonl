@@ -1,0 +1,2 @@
+{"id": "batch_req_ffff", "custom_id": "01a04b28-a41c-7567-86c5-ff7982b43b68", "response": null, "error": {"code": "batch_expired", "message": "This request could not be executed before the completion window expired."}}
+{"id": "batch_req_eeee", "custom_id": "01a04b28-a41c-7567-86c5-ff7982b43b69", "response": null, "error": {"code": "invalid_request", "message": "max_output_tokens exceeded"}}

@@ -514,6 +514,13 @@ Batch is not "the same request with a flag". Four differences, all of which Phas
    `files.create(purpose="batch")` → `batches.create(endpoint="/v1/responses")` → poll →
    `files.content(output_file_id)`. Results come back **in any order**; key them by `custom_id`,
    never by position.
+
+   And there are **two result files, not one.** Successful rows land in `output_file_id`;
+   failed and expired ones land in `error_file_id` and carry `"response": null`. A collector
+   that reads only the first drops every failure — which this one did until the round trip got
+   tests, at which point the queue stopped reporting the useless "missing from batch output" and
+   started recording what the API actually said. If every request fails there is no output file
+   at all, only an error file.
 4. **An enqueued-token limit per usage tier.** Batch caps how many input tokens may be queued at
    once, and the cap rises with account spend. A 500-résumé batch is far past the lower tiers,
    so the scheduler splits each send into sub-batches.

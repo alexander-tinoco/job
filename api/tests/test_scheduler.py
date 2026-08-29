@@ -301,3 +301,103 @@ def test_the_worker_is_off_unless_switched_on() -> None:
     from app.core.config import Settings
 
     assert Settings().worker_enabled is False
+
+
+# --- The seam between the scheduler and the API ---
+#
+# Every test above mocks `app.ai.batch` away, which is what let a real defect
+# live in `collect()`: it read only the output file, so every failed row was
+# dropped and the scheduler recorded "missing from batch output" instead of the
+# reason. These two drive the real `collect()` over recorded files, so the two
+# halves are exercised together at least once.
+
+
+def test_a_failed_row_reaches_the_queue_with_the_reason_the_api_gave(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from tests.test_batch import FakeClient
+
+    application = _ready(session, "expired@example.com", "seam-expired")
+    (row,) = queue.claim_pending(session, 10)
+    queue.mark_sent(session, [row], "batch_seam")
+
+    # One expired row, addressed to this queue row, in the *error* file.
+    error_line = json.dumps(
+        {
+            "id": "batch_req_1",
+            "custom_id": str(row.id),
+            "response": None,
+            "error": {
+                "code": "batch_expired",
+                "message": "This request could not be executed before the completion "
+                "window expired.",
+            },
+        }
+    )
+    client = FakeClient(
+        output_file_id=None, error_file_id="file_err", files={"file_err": error_line}
+    )
+    monkeypatch.setattr("app.ai.batch.get_client", lambda: client)
+    monkeypatch.setattr("app.ai.batch.status", lambda batch_id: "completed")
+
+    stored = scheduler.collect_once(session)
+
+    assert stored == 0
+    assert row.last_error is not None
+    assert "batch_expired" in row.last_error
+    # The message the old code recorded instead, having never read the error file.
+    assert "missing from batch output" not in row.last_error
+    # An expiry is transient, so the row goes back to the queue rather than out.
+    assert row.state is QueueState.PENDING
+    assert application.evaluation is None
+
+
+def test_a_real_output_file_is_parsed_and_persisted(
+    session: Session, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """One pass over the genuine parser, not a hand-built `BatchResult`."""
+    from tests.test_batch import FakeClient
+
+    application = _ready(session, "seam@example.com", "seam-ok")
+    (row,) = queue.claim_pending(session, 10)
+    queue.mark_sent(session, [row], "batch_seam_ok")
+
+    recorded = json.loads((FIXTURES / "strong_candidate.json").read_text(encoding="utf-8"))
+    line = json.dumps(
+        {
+            "id": "batch_req_1",
+            "custom_id": str(row.id),
+            "response": {
+                "status_code": 200,
+                "request_id": "req_1",
+                "body": {
+                    "output": [
+                        {"id": "rs_1", "type": "reasoning", "summary": []},
+                        {
+                            "id": "msg_1",
+                            "type": "message",
+                            "role": "assistant",
+                            "content": [
+                                {
+                                    "type": "output_text",
+                                    "text": json.dumps(recorded["output"]),
+                                }
+                            ],
+                        },
+                    ],
+                    "usage": {"input_tokens": 1187, "output_tokens": 621},
+                },
+            },
+            "error": None,
+        }
+    )
+    client = FakeClient(error_file_id=None, files={"file_out": line})
+    monkeypatch.setattr("app.ai.batch.get_client", lambda: client)
+    monkeypatch.setattr("app.ai.batch.status", lambda batch_id: "completed")
+
+    stored = scheduler.collect_once(session)
+
+    assert stored == 1
+    assert row.state is QueueState.DONE
+    assert application.evaluation is not None
+    assert application.state is ApplicationState.EVALUATED

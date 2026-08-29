@@ -101,19 +101,24 @@ def collect(batch_id: str) -> list[BatchResult]:
     Results arrive in arbitrary order, so every one carries its `custom_id` and
     callers must key by it. A row that failed is returned as a result with an
     error rather than dropped: a candidate whose evaluation failed still needs
-    to appear in the panel.
+    to appear in the panel with the reason.
+
+    **Two files, not one.** The API writes successful rows to `output_file_id`
+    and failed or expired ones to `error_file_id`. Reading only the first loses
+    every failure, and the caller then reports the useless "missing from batch
+    output" instead of what actually went wrong.
     """
     client = get_client()
     batch = client.batches.retrieve(batch_id)
-    if not batch.output_file_id:
-        return []
 
     results: list[BatchResult] = []
-    for line in client.files.content(batch.output_file_id).text.splitlines():
-        if not line.strip():
+    for file_id in (batch.output_file_id, batch.error_file_id):
+        if not file_id:
             continue
-        row = json.loads(line)
-        results.append(_parse_row(row))
+        for line in client.files.content(file_id).text.splitlines():
+            if not line.strip():
+                continue
+            results.append(_parse_row(json.loads(line)))
     return results
 
 
