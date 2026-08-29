@@ -60,9 +60,23 @@ export async function openSeededOpening(page: Page): Promise<void> {
   const seeded = openings.find((o) => o.slug === SEEDED_SLUG);
   expect(seeded, `no opening with slug ${SEEDED_SLUG} — is the seed loaded?`).toBeTruthy();
 
+  // Whose ranking are we waiting for? The panel opens on whichever opening comes
+  // first, and that one already has rows — so waiting for "a row" passes
+  // instantly and a click can land on the previous opening's candidate before
+  // the new list arrives. Wait for a name that belongs to *this* opening.
+  const ranked = await page.request.get(
+    `${API}/api/v1/openings/${seeded!.id}/applications?limit=1`,
+  );
+  const top = (await ranked.json()).items[0]?.candidate_name as string | undefined;
+
   const picker = page.locator("select.field");
   if (await picker.count()) {
     await picker.selectOption(seeded!.id);
+  }
+  if (top) {
+    await expect(page.locator(".exhibit-name", { hasText: top }).first()).toBeVisible({
+      timeout: 15_000,
+    });
   }
   await expect(page.locator(".exhibit").first()).toBeVisible({ timeout: 15_000 });
 }

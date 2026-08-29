@@ -629,11 +629,18 @@ automatically*; that every finding cites a sentence **and the character offsets 
 that hovering a finding lights that quote in the résumé; that a shared link opens in a browser
 context with no cookies and shows no email address and no way to act.
 
-Two things the suite learned the hard way, both written down beside the tests. Sign-in failures
-are counted per email, so a test that always fails as `nobody@example.com` locks that address out
-and starts asserting the lockout message instead — each run now uses a fresh address, and the
-lockout has a test of its own. And the seeded opening is selected **by id from the API**, because
-a development database accumulates openings whose titles repeat.
+Three things the suite learned the hard way, all written down beside the tests:
+
+- **Sign-in failures are counted per email and per address.** A test that always fails as
+  `nobody@example.com` locks that address out and starts asserting the lockout message instead,
+  and the throttling test spent an IP allowance every later sign-in needed. Each now uses an
+  address of its own.
+- **The seeded opening is selected by id from the API**, because a development database
+  accumulates openings whose titles repeat.
+- **And waiting for "a row" is not waiting for the right rows.** The panel opens on whichever
+  opening comes first; that one already has rows, so the wait passed instantly and a click landed
+  on the previous opening's candidate. The fixture now waits for a name that belongs to the
+  opening it just selected.
 
 ## Property-based tests
 
