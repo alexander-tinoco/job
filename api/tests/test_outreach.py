@@ -3,6 +3,8 @@
 No test sends a real email: `sender.send` is the seam, and it is stubbed.
 """
 
+import json
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import select
@@ -281,3 +283,134 @@ def test_outreach_requires_a_session(client: TestClient, session: Session) -> No
 
     assert client.get(f"/api/v1/openings/{opening.id}/outreach").status_code == 401
     assert client.post(f"/api/v1/openings/{opening.id}/outreach").status_code == 401
+
+
+# --- The provider call itself ---
+#
+# `sender.send` was the least covered part of outreach: everything above it is
+# tested against a stubbed sender, so the request actually put on the wire — and
+# the header carrying the key — was never looked at.
+
+
+def _resend(
+    monkeypatch: pytest.MonkeyPatch, reply: bytes = b'{"id":"msg_123"}'
+) -> dict[str, object]:
+    """Capture the request instead of making it."""
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("RESEND_API_KEY", "re_test_key")
+    monkeypatch.setenv("OUTREACH_FROM", "hr@acme.com")
+    get_settings.cache_clear()
+
+    seen: dict[str, object] = {}
+
+    class _Response:
+        def __enter__(self) -> _Response:
+            return self
+
+        def __exit__(self, *_: object) -> None:
+            pass
+
+        def read(self) -> bytes:
+            return reply
+
+    def fake_urlopen(request: object, timeout: float = 0) -> _Response:
+        seen["url"] = request.full_url  # type: ignore[attr-defined]
+        seen["headers"] = dict(request.header_items())  # type: ignore[attr-defined]
+        seen["body"] = json.loads(request.data)  # type: ignore[attr-defined]
+        return _Response()
+
+    monkeypatch.setattr("app.outreach.sender.urllib.request.urlopen", fake_urlopen)
+    return seen
+
+
+def test_the_message_goes_out_as_plain_text_from_the_configured_address(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = _resend(monkeypatch)
+    delivery = sender.send("ada@example.com", "About your application", "Hello Ada,")
+
+    assert delivery.provider_message_id == "msg_123"
+    body = seen["body"]
+    assert body["from"] == "hr@acme.com"  # type: ignore[index]
+    assert body["to"] == ["ada@example.com"]  # type: ignore[index]
+    assert body["text"] == "Hello Ada,"  # type: ignore[index]
+    # HTML mail from an unfamiliar sender is what spam filters look at hardest.
+    assert "html" not in body  # type: ignore[operator]
+
+
+def test_the_key_travels_in_a_header_and_nowhere_else(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    seen = _resend(monkeypatch)
+    sender.send("ada@example.com", "Subject", "Body")
+
+    headers = {k.lower(): v for k, v in seen["headers"].items()}  # type: ignore[union-attr]
+    assert headers["authorization"] == "Bearer re_test_key"
+    assert "re_test_key" not in json.dumps(seen["body"])
+    assert "re_test_key" not in str(seen["url"])
+
+
+def test_a_refusal_from_the_provider_is_reported_with_its_explanation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import io
+    import urllib.error
+
+    _resend(monkeypatch)
+
+    def refuse(request: object, timeout: float = 0) -> object:
+        raise urllib.error.HTTPError(
+            "https://api.resend.com/emails",
+            422,
+            "Unprocessable",
+            {},
+            io.BytesIO(b'{"message":"domain not verified"}'),
+        )
+
+    monkeypatch.setattr("app.outreach.sender.urllib.request.urlopen", refuse)
+
+    with pytest.raises(sender.SendFailedError) as caught:
+        sender.send("ada@example.com", "Subject", "Body")
+
+    assert "422" in str(caught.value)
+    assert "domain not verified" in str(caught.value)
+
+
+def test_an_unreachable_provider_is_reported_rather_than_raising_a_socket_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _resend(monkeypatch)
+
+    def unreachable(request: object, timeout: float = 0) -> object:
+        raise OSError("Name or service not known")
+
+    monkeypatch.setattr("app.outreach.sender.urllib.request.urlopen", unreachable)
+
+    with pytest.raises(sender.SendFailedError, match="Could not reach"):
+        sender.send("ada@example.com", "Subject", "Body")
+
+
+def test_a_reply_without_an_id_still_returns_a_delivery(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The draft is recorded as sent either way; the id is for tracing, not truth."""
+    _resend(monkeypatch, reply=b"")
+    assert sender.send("ada@example.com", "Subject", "Body").provider_message_id == ""
+
+
+def test_sending_unconfigured_raises_before_any_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from app.core.config import get_settings
+
+    monkeypatch.setenv("RESEND_API_KEY", "")
+    get_settings.cache_clear()
+
+    def never(*_: object, **__: object) -> object:
+        raise AssertionError("no request should be made")
+
+    monkeypatch.setattr("app.outreach.sender.urllib.request.urlopen", never)
+
+    with pytest.raises(sender.SendingUnavailableError):
+        sender.send("ada@example.com", "Subject", "Body")

@@ -49,17 +49,54 @@ line-length = 100
 target-version = "py314"
 
 [tool.ruff.lint]
-select = ["E", "F", "I", "N", "UP", "B", "SIM"]
+# S is bandit's rule set. It was available and switched off; enabling it found
+# eight things, all of which turned out to be benign — which is the argument for
+# having it on, since a real one had nowhere to hide.
+select = ["E", "F", "I", "N", "UP", "B", "SIM", "S", "C90"]
+
+[tool.ruff.lint.mccabe]
+# Two functions were over this and were split rather than the gate being set to
+# fit them. The number itself is arbitrary; holding it is not.
+max-complexity = 8
 
 [tool.ruff.lint.per-file-ignores]
 # Alembic autogenerate emits long sa.Column(...) lines; the template cannot prevent it.
 "alembic/versions/*" = ["E501"]
+# Development tooling, deliberately excluded from the container. `assert` is
+# right in a measurement script, and the URLs are constants written by us.
+"scripts/*" = ["S101", "S310"]
+# A test suite is made of asserts, and its passwords are fixtures. The migration
+# test shells out to alembic against a scratch database it names itself.
+"tests/*" = ["S101", "S105", "S106", "S603", "S108"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 # SAWarnings almost always mean a real modelling mistake. Fail on them.
 filterwarnings = ["error::sqlalchemy.exc.SAWarning"]
+
+[tool.coverage.run]
+source = ["app"]
+branch = true
+
+[tool.coverage.report]
+# Branch coverage, which is stricter than line coverage and the reason this
+# number is lower than the 96% a line-only report shows. A floor, not a target:
+# set just under where the suite actually sits, so it catches a real drop rather
+# than failing on a rounding change.
+fail_under = 93
+show_missing = true
+skip_covered = true
+exclude_also = [
+    # Declared for type checkers; never executed.
+    "if TYPE_CHECKING:",
+    "\\.\\.\\.$",
+    # Guards the caller has already ruled out, marked at the site with a reason.
+    "raise NotImplementedError",
+]
+
+[tool.coverage.paths]
+source = ["app", "/app/app"]
 
 [tool.mypy]
 python_version = "3.14"

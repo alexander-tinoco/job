@@ -63,9 +63,11 @@ jobs:
           .venv/bin/alembic upgrade head
           .venv/bin/alembic check
 
-      - name: Tests
+      # --cov reads the thresholds from pyproject: branch coverage with a floor,
+      # so a change that adds untested code fails here rather than in review.
+      - name: Tests and coverage floor
         working-directory: api
-        run: .venv/bin/pytest -q
+        run: .venv/bin/pytest -q --cov
 
   web:
     runs-on: ubuntu-latest

@@ -118,7 +118,8 @@ def _row(criterion: Criterion, applications: list[Application]) -> ComparedCrite
     sides: list[SideEvidence] = []
     for application in applications:
         evaluation = application.evaluation
-        assert evaluation is not None
+        if evaluation is None:  # pragma: no cover - `compare` refuses these first
+            raise NotComparableError("Every candidate compared must have been examined.")
         score = next((s for s in evaluation.scores if s.criterion_id == criterion.id), None)
         rating = score.score if score else 0
         sides.append(

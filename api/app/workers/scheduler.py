@@ -159,34 +159,49 @@ def collect_once(session: Session) -> int:
 
         rows = queue.rows_for_batch(session, batch_id)
         for result in batch.collect(batch_id):
-            # Keyed by custom_id, never by position: results come back unordered.
-            key = _as_uuid(result.custom_id)
-            matched = rows.get(key) if key is not None else None
-            if matched is None:
-                logger.warning(
-                    "batch_result_unmatched batch_id=%s id=%s", batch_id, result.custom_id
-                )
-                continue
-            if result.output is None or matched.application_id is None:
-                observability.evaluations_total.labels("failed").inc()
-                queue.mark_failed(session, matched, result.error or "no output")
-                continue
-            application = session.get(Application, matched.application_id)
-            if application is None:
-                queue.mark_failed(session, matched, "application no longer exists")
-                continue
-            persist_evaluation(session, application, result.output)
-            queue.mark_done(session, matched)
-            # The number a bill is made of, recorded where it is actually known.
-            observability.tokens_total.labels("input").inc(result.input_tokens)
-            observability.tokens_total.labels("output").inc(result.output_tokens)
-            observability.evaluations_total.labels("stored").inc()
-            stored += 1
+            stored += _persist_result(session, batch_id, rows, result)
 
+        # Anything still SENT was in neither file. Rare, and it must not leave a
+        # candidate waiting forever for a result that is not coming.
         for row in rows.values():
             if row.state is QueueState.SENT:
                 queue.mark_failed(session, row, "missing from batch output")
     return stored
+
+
+def _persist_result(
+    session: Session,
+    batch_id: str,
+    rows: dict[uuid.UUID, JobQueue],
+    result: batch.BatchResult,
+) -> int:
+    """Store one returned row. Returns 1 if an evaluation was written.
+
+    Keyed by `custom_id`, never by position: results come back unordered.
+    """
+    key = _as_uuid(result.custom_id)
+    matched = rows.get(key) if key is not None else None
+    if matched is None:
+        logger.warning("batch_result_unmatched batch_id=%s id=%s", batch_id, result.custom_id)
+        return 0
+
+    if result.output is None or matched.application_id is None:
+        observability.evaluations_total.labels("failed").inc()
+        queue.mark_failed(session, matched, result.error or "no output")
+        return 0
+
+    application = session.get(Application, matched.application_id)
+    if application is None:
+        queue.mark_failed(session, matched, "application no longer exists")
+        return 0
+
+    persist_evaluation(session, application, result.output)
+    queue.mark_done(session, matched)
+    # The number a bill is made of, recorded where it is actually known.
+    observability.tokens_total.labels("input").inc(result.input_tokens)
+    observability.tokens_total.labels("output").inc(result.output_tokens)
+    observability.evaluations_total.labels("stored").inc()
+    return 1
 
 
 def expire_stale(session: Session) -> int:

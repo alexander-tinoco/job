@@ -170,7 +170,9 @@ def now() -> datetime:
     return datetime.now(UTC)
 
 
-TOKEN_BUDGET_KEY = "enqueued_token_budget"
+# noqa S105: the name ends in KEY, the value is a dictionary key in a settings
+# table. There is no secret here.
+TOKEN_BUDGET_KEY = "enqueued_token_budget"  # noqa: S105
 
 
 def get_state(session: Session, key: str, default: int) -> int:

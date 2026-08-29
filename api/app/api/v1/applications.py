@@ -1,3 +1,4 @@
+import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
@@ -14,32 +15,25 @@ from app.services import openings as openings_service
 router = APIRouter(prefix="/openings", tags=["public"])
 
 
-@router.post(
-    "/{slug}/apply",
-    response_model=ApplicationReceipt,
-    status_code=status.HTTP_201_CREATED,
-)
-async def apply(
-    slug: str,
+def _accept(
     session: SessionDep,
-    source_ip: ClientIp,
-    full_name: Annotated[str, Form()],
-    email: Annotated[str, Form()],
-    consent: Annotated[bool, Form()],
-    resume: Annotated[UploadFile, File()],
-    phone: Annotated[str | None, Form()] = None,
-    linkedin_url: Annotated[str | None, Form()] = None,
-    # JSON in a form field: the questions are per-opening, so the browser cannot
-    # name the fields in advance.
-    answers: Annotated[str | None, Form()] = None,
-) -> ApplicationReceipt:
-    """Public application endpoint. No auth: the slug is the invitation."""
-    opening = openings_service.get_opening_by_slug(session, slug)
-    if opening is None:
-        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Opening not found.")
+    opening: object,
+    *,
+    source_ip: str,
+    full_name: str,
+    email: str,
+    consent: bool,
+    phone: str | None,
+    linkedin_url: str | None,
+    answers: str | None,
+) -> tuple[ApplicantDetails, dict[uuid.UUID, bool]]:
+    """Every reason to refuse, before anything is written.
 
-    # Before anything is written or extracted. The upload has already crossed
-    # the wire by now, but the disk write, PyMuPDF and the model call have not.
+    Order matters and is not alphabetical: the throttle runs first because it is
+    the one check that exists to stop work being done at all. The upload has
+    already crossed the wire by the time this runs, but the disk write, PyMuPDF
+    and the model call have not.
+    """
     try:
         limits.check_application(session, email, source_ip)
     except limits.RateLimitedError as exc:
@@ -67,6 +61,45 @@ async def apply(
             status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=exc.errors(include_url=False, include_context=False, include_input=False),
         ) from exc
+
+    return details, stated
+
+
+@router.post(
+    "/{slug}/apply",
+    response_model=ApplicationReceipt,
+    status_code=status.HTTP_201_CREATED,
+)
+async def apply(
+    slug: str,
+    session: SessionDep,
+    source_ip: ClientIp,
+    full_name: Annotated[str, Form()],
+    email: Annotated[str, Form()],
+    consent: Annotated[bool, Form()],
+    resume: Annotated[UploadFile, File()],
+    phone: Annotated[str | None, Form()] = None,
+    linkedin_url: Annotated[str | None, Form()] = None,
+    # JSON in a form field: the questions are per-opening, so the browser cannot
+    # name the fields in advance.
+    answers: Annotated[str | None, Form()] = None,
+) -> ApplicationReceipt:
+    """Public application endpoint. No auth: the slug is the invitation."""
+    opening = openings_service.get_opening_by_slug(session, slug)
+    if opening is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Opening not found.")
+
+    details, stated = _accept(
+        session,
+        opening,
+        source_ip=source_ip,
+        full_name=full_name,
+        email=email,
+        consent=consent,
+        phone=phone,
+        linkedin_url=linkedin_url,
+        answers=answers,
+    )
 
     candidate = service.get_or_create_candidate(session, details)
     try:

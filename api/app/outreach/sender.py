@@ -60,7 +60,9 @@ def send(to: str, subject: str, body: str) -> Delivery:
     request.add_header("Content-Type", "application/json")
 
     try:
-        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:
+        # noqa S310: the URL is the module constant above, never anything a
+        # caller supplies, so no scheme can be smuggled in.
+        with urllib.request.urlopen(request, timeout=TIMEOUT_SECONDS) as response:  # noqa: S310
             answer = json.loads(response.read() or b"{}")
     except urllib.error.HTTPError as exc:
         # The provider's body explains the refusal; the key is in a header we

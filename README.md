@@ -854,9 +854,26 @@ cd api
 .venv/bin/ruff check .
 .venv/bin/ruff format --check .
 .venv/bin/mypy .
+.venv/bin/pytest -q --cov          # tests, plus the coverage floor
 ```
 
-The `pre-commit` hook runs these three whenever a Python file under `api/` is staged. It checks
+Four gates, all enforced in CI, all chosen so they fail on a real regression rather than on
+noise:
+
+| Gate | Where | Why this number |
+|---|---|---|
+| **Coverage ≥ 93%** | `--cov`, `fail_under` in `pyproject.toml` | **Branch** coverage, stricter than line coverage — the same suite reads 96% on lines. A floor set just under where the suite sits, so it catches a drop and not a rounding change |
+| **Complexity ≤ 8** | ruff `C90` | Two functions were over it and were **split**, rather than the gate being set to fit them. The number is arbitrary; holding it is not |
+| **Security rules** | ruff `S` (bandit) | Was available and switched off. Turning it on found eight things, all benign on inspection — which is the argument for it, since a real one had nowhere to hide |
+| **Types** | `mypy`, strict in `app.ai` and `app.ingest` | The AI boundary and the PDF pipeline are where a wrong type becomes a wrong decision |
+
+The `S` exclusions are per-file and each has a reason in `pyproject.toml`: `assert` is right in a
+measurement script, a test suite is made of asserts, and `TOKEN_BUDGET_KEY` is a dictionary key
+whose name merely ends in `KEY`. The two real ones — the Resend URL and a `NotComparableError`
+guard that used to be an `assert`, and so would have vanished under `python -O` — were fixed
+rather than ignored.
+
+The `pre-commit` hook runs the first three whenever a Python file under `api/` is staged. It checks
 but never rewrites — an auto-fix would leave changes unstaged and silently outside the commit.
 When it fails, run `.venv/bin/ruff check --fix . && .venv/bin/ruff format .` yourself.
 
