@@ -439,6 +439,30 @@ class Session(Base, TimestampMixin):
     user: Mapped[User] = relationship(back_populates="sessions")
 
 
+class RateEvent(Base):
+    """One accepted action, for throttling the endpoints a stranger can reach.
+
+    Distinct from `LoginAttempt`, which counts sign-in *failures*. This counts
+    things that succeeded: an application accepted at no cost to the applicant
+    is exactly what a flood is made of, so failures are the wrong thing to
+    measure here.
+
+    The address is stored as given and the email only as a digest. Both are used
+    for equality alone, but an email identifies a person who is not our user,
+    while an operator investigating a flood needs to see the address.
+    """
+
+    __tablename__ = "rate_events"
+    __table_args__ = (Index("ix_rate_events_scope_key_created", "scope", "key", "created_at"),)
+
+    id: Mapped[uuid.UUID] = _pk()
+    scope: Mapped[str] = mapped_column(String(40), nullable=False)
+    key: Mapped[str] = mapped_column(String(64), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False
+    )
+
+
 class LoginAttempt(Base):
     """Failed sign-ins, for rate limiting.
 

@@ -244,6 +244,35 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Throttling the public endpoints
+
+`POST /openings/{slug}/apply` takes no session — the slug is the invitation — and does real work
+for every call: a file of up to 10 MB on disk, an inline PyMuPDF pass, and a queue row that
+becomes a paid model call. Sign-in has been rate limited since the beginning. This was not.
+
+```
+sign-in   5 per email · 20 per IP · 15 min      (failures)
+apply     5 per email · 20 per IP · 1 h         (accepted applications)
+```
+
+**Counted per accepted application, not per attempt.** Counting refusals would let a blocked
+caller keep their own lockout alive by continuing to knock; a test asserts a refusal adds
+nothing.
+
+The check runs before anything is written. By then the upload has already crossed the wire into
+a spooled temp file, so the bandwidth is spent either way — what the refusal saves is the disk
+write, the extraction and the model call, which is where the cost is.
+
+The limits are **deliberately loose**, and the reason is asymmetry: a flood is obvious in the
+numbers, while a real candidate turned away is invisible — they simply do not apply. A shared
+office or a careers fair leaves through one address, so the per-IP number sits far above what one
+person could need, and the per-email limit is what actually stops a flood.
+
+The address is stored as given; the email only as a SHA-256. Both are compared for equality
+alone, but an email identifies a person who is not our user, while an operator investigating a
+flood needs to see the address. Both tables are swept two days after their window closes —
+including `login_attempts`, which had no sweep of its own and had been growing without bound.
+
 ## Screening questions
 
 An opening can ask up to five yes/no questions — right to work, visa sponsorship, a licence.

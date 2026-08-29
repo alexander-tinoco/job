@@ -3,11 +3,11 @@ from typing import Annotated
 from fastapi import APIRouter, File, Form, HTTPException, UploadFile, status
 from pydantic import ValidationError
 
-from app.api.deps import SessionDep
+from app.api.deps import ClientIp, SessionDep
 from app.db.models import ResumeDocument
 from app.schemas.applications import ApplicantDetails, ApplicationReceipt
 from app.services import applications as service
-from app.services import ingestion, screening, storage
+from app.services import ingestion, limits, screening, storage
 from app.services import openings as openings_service
 
 router = APIRouter(prefix="/openings", tags=["public"])
@@ -21,6 +21,7 @@ router = APIRouter(prefix="/openings", tags=["public"])
 async def apply(
     slug: str,
     session: SessionDep,
+    source_ip: ClientIp,
     full_name: Annotated[str, Form()],
     email: Annotated[str, Form()],
     consent: Annotated[bool, Form()],
@@ -35,6 +36,13 @@ async def apply(
     opening = openings_service.get_opening_by_slug(session, slug)
     if opening is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Opening not found.")
+
+    # Before anything is written or extracted. The upload has already crossed
+    # the wire by now, but the disk write, PyMuPDF and the model call have not.
+    try:
+        limits.check_application(session, email, source_ip)
+    except limits.RateLimitedError as exc:
+        raise HTTPException(status.HTTP_429_TOO_MANY_REQUESTS, detail=str(exc)) from exc
 
     try:
         stated = screening.parse(answers)
@@ -89,6 +97,7 @@ async def apply(
     # résumé, its text and any tampering flags from the moment it arrives,
     # instead of waiting for the evaluation batch (plan §4.1).
     ingestion.ingest_application(session, application)
+    limits.record_application(session, email, source_ip)
     session.commit()
 
     return ApplicationReceipt(

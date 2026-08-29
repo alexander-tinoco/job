@@ -13,7 +13,7 @@ import contextlib
 import logging
 
 from app.db.session import SessionLocal
-from app.services import lifecycle
+from app.services import lifecycle, limits
 from app.services.queue import now
 from app.workers import scheduler
 
@@ -33,19 +33,24 @@ def tick() -> None:
             # claim on the application page, so nothing may depend on a person
             # remembering to press a button.
             swept = lifecycle.sweep(session)
+            # Throttle rows outlive their window by a day and no longer. They
+            # exist to enforce a limit, not to record who applied from where.
+            throttles = limits.sweep(session)
             session.commit()
         except Exception:
             session.rollback()
             logger.exception("scheduler_tick_failed")
             return
-    if stored or expired or outcome.sent or swept.applications:
+    if stored or expired or outcome.sent or swept.applications or throttles:
         logger.info(
-            "scheduler_tick collected=%s expired=%s sent=%s skipped=%s retained_deleted=%s",
+            "scheduler_tick collected=%s expired=%s sent=%s skipped=%s "
+            "retained_deleted=%s throttles_dropped=%s",
             stored,
             expired,
             outcome.sent,
             outcome.skipped,
             swept.applications,
+            throttles,
         )
 
 
