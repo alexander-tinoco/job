@@ -20,6 +20,7 @@ from app.core import observability
 from app.core.config import get_settings
 from app.db.models import JobQueue
 from app.db.types import QueueState
+from app.main import _queue_health
 
 
 def _configure(monkeypatch: pytest.MonkeyPatch, **values: str) -> None:
@@ -171,18 +172,51 @@ def test_readiness_reports_the_queue_and_the_disk(
     assert "oldest_pending_seconds" in body["queue"]
 
 
-def test_a_stalled_queue_is_degraded_but_still_serving(
-    client: TestClient, session: Session, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    """An instance with a frozen batch still serves every page in the panel.
+def test_an_old_backlog_reads_as_stalled(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The rule itself, against the session that holds the row.
 
-    Returning 503 would let a background problem take the whole site out of
-    rotation, which is a worse outage than the one being reported.
+    Not through `/ready`: readiness opens its own connection, so a row written
+    inside the test transaction is invisible to it. An earlier version of this
+    test went through the endpoint and passed only because the local database
+    still held stale rows from previous runs — on a clean CI database it failed.
     """
     _configure(monkeypatch, QUEUE_WARNING_MINUTES="90")
     old = datetime.now(UTC) - timedelta(minutes=120)
     session.add(JobQueue(task="evaluate", state=QueueState.PENDING, created_at=old))
-    session.commit()
+    session.flush()
+
+    reading = _queue_health(session)
+
+    assert reading["stalled"] is True
+    assert int(str(reading["oldest_pending_seconds"])) >= 120 * 60
+
+
+def test_a_fresh_backlog_is_not_stalled(session: Session, monkeypatch: pytest.MonkeyPatch) -> None:
+    """Depth alone says nothing: a busy queue and a frozen one look identical."""
+    _configure(monkeypatch, QUEUE_WARNING_MINUTES="90")
+    session.add(JobQueue(task="evaluate", state=QueueState.PENDING))
+    session.flush()
+
+    reading = _queue_health(session)
+
+    assert reading["stalled"] is False
+    assert int(str(reading["depth"]["pending"])) >= 1  # type: ignore[index]
+
+
+def test_a_stalled_queue_is_degraded_but_still_serving(
+    client: TestClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An instance with a frozen batch still serves every page in the panel.
+
+    Returning 503 would let a background problem take the whole site out of
+    rotation, which is a worse outage than the one being reported. The key is
+    configured here so that `degraded` can only be coming from the queue.
+    """
+    _configure(monkeypatch, OPENAI_API_KEY="sk-test")
+    monkeypatch.setattr(
+        "app.main._queue_health",
+        lambda _: {"depth": {"pending": 9}, "oldest_pending_seconds": 7200, "stalled": True},
+    )
 
     response = client.get("/ready")
 
@@ -190,6 +224,8 @@ def test_a_stalled_queue_is_degraded_but_still_serving(
     body = response.json()
     assert body["status"] == "degraded"
     assert body["queue"]["stalled"] is True
+    assert body["database"] == "ok"
+    assert body["model_api"] == "configured"
 
 
 def test_readiness_never_calls_the_model_api(

@@ -126,6 +126,45 @@ cd ../web && npm install && npm run dev
 npm install                     # at the repository root
 ```
 
+Two hooks, installed by husky. Neither ever rewrites what you wrote: an auto-fix would leave
+changes unstaged and silently outside the commit you thought you were making.
+
+| Hook | What it runs |
+|---|---|
+| `pre-commit` | `ruff check`, `ruff format --check` and `mypy` over `api/`, only when a Python file under `api/` is staged. Always through `api/.venv/bin/*`, never the PATH — otherwise the hook validates with whatever version the machine happens to have |
+| `commit-msg` | `commitlint`, over the rules below |
+
+`pytest` is deliberately not in a hook: the full suite takes about a minute, and a hook that slow
+gets bypassed. CI runs it on every push.
+
+## Commit convention
+
+[Conventional Commits](https://www.conventionalcommits.org), enforced by commitlint in
+`commit-msg` and again in CI on every pull request.
+
+```
+<type>(<scope>): <description in the imperative, lower case, no trailing period>
+```
+
+**Title only.** No body, no footers, no `Co-Authored-By`, no trailing links — `body-empty` and
+`footer-empty` are errors, and the header is capped at 72 characters. Anything that needs
+explaining belongs in the code or in `docs/`, where it stays next to what it explains instead of
+in a message nobody greps.
+
+| | |
+|---|---|
+| **Types** | `feat` · `fix` · `refactor` · `test` · `docs` · `chore` · `build` · `ci` · `perf` · `style` |
+| **Scopes** | `api` · `db` · `ingest` · `ai` · `web` · `auth` · `infra` · `docs` |
+
+```
+feat(ingest): detect hidden text in pdfs with pymupdf
+fix(ai): read the batch error file so failures keep their reason
+feat(api): rate limit the public application endpoint
+chore(infra): add husky and commitlint
+```
+
+Never `--no-verify`. If a hook gets in the way, fix the hook.
+
 ## Authentication
 
 Email and password, with a server-side session in an `HttpOnly` cookie.
