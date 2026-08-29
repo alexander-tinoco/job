@@ -80,6 +80,11 @@ test.describe("the panel", () => {
 
   test("repeated attempts are throttled, and say so", async ({ page }) => {
     const target = `locked.${Date.now()}@example.com`;
+    // From an address of its own. Failures are counted per IP as well as per
+    // email, so hammering from the suite's own address spends an allowance every
+    // later sign-in needs — which is precisely how this test broke the five that
+    // follow it, once, quietly, and only when the whole file ran.
+    await page.setExtraHTTPHeaders({ "X-Forwarded-For": "203.0.113.42" });
     await page.goto(`/${process.env.VITE_PANEL_PATH ?? "panel"}`);
 
     for (let attempt = 0; attempt < 6; attempt++) {

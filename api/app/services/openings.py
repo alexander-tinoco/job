@@ -33,6 +33,30 @@ def _unique_slug(session: Session, desired: str) -> str:
     return candidate
 
 
+class SecondCompanyError(Exception):
+    """A deployment holds one company, and this one already has it."""
+
+
+def create_company_once(session: Session, name: str) -> Company:
+    """Create the deployment's company, and refuse to create a second.
+
+    The MVP is one company per deployment (plan §7, "Out"): there is no tenant
+    on `User`, so the panel shows every opening in the database to everyone who
+    can sign in. That is correct for one company and a silent data leak for two.
+
+    Enforced rather than assumed. The assumption was written down and the code
+    allowed the opposite, which is the shape most tenancy leaks have.
+    """
+    existing = session.scalar(select(Company))
+    if existing is not None:
+        raise SecondCompanyError(
+            f"This deployment already holds {existing.name!r}. One company per deployment: "
+            "everyone who can sign in sees every opening, so a second company here would "
+            "show each one the other's candidates. Run a second deployment instead."
+        )
+    return create_company(session, name)
+
+
 def create_opening(session: Session, company: Company, payload: OpeningCreate) -> JobOpening:
     opening = JobOpening(
         company=company,

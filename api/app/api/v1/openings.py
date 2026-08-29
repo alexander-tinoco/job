@@ -24,7 +24,10 @@ def list_rubric_templates(_: CurrentUser) -> list[RubricTemplate]:
 
 @router.post("/companies", response_model=CompanyOut, status_code=status.HTTP_201_CREATED)
 def create_company(payload: CompanyCreate, session: SessionDep, _: CurrentUser) -> CompanyOut:
-    company = service.create_company(session, payload.name)
+    try:
+        company = service.create_company_once(session, payload.name)
+    except service.SecondCompanyError as exc:
+        raise HTTPException(status.HTTP_409_CONFLICT, detail=str(exc)) from exc
     session.commit()
     return CompanyOut.model_validate(company)
 

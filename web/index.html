@@ -3,8 +3,9 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <!-- Résumés are untrusted input. The panel renders their text, never their markup. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+    <!-- The Content-Security-Policy is served as a header by nginx, not declared
+         here: a meta tag cannot express frame-ancestors, base-uri or form-action,
+         and two declarations would eventually disagree. See web/nginx.conf. -->
     <link rel="icon" type="image/svg+xml" href="/mark.svg" />
     <meta name="theme-color" content="#faf8f4" />
     <title>Verbatim</title>

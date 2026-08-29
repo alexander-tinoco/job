@@ -58,17 +58,22 @@ test.describe("a shared shortlist", () => {
     await signIn(page);
     await openSeededOpening(page);
 
-    // Shortlist someone, so the link has something to show.
+    // Shortlist someone, so the link has something to show — and assert the
+    // rule on the way past: a decision takes a person and a reason, and the
+    // button stays dead until it has both.
     await page.locator(".exhibit").first().click();
     await expect(page.locator(".plate-name")).toBeVisible();
+
     const shortlist = page.getByRole("button", { name: /^shortlist$/i });
+    const decided = page.locator(".decided");
     if (await shortlist.count()) {
+      await expect(shortlist).toBeDisabled();
+      await page.getByPlaceholder(/your name/i).fill("Ana Ruiz");
+      await expect(shortlist).toBeDisabled();
+      await page.getByPlaceholder(/why/i).fill("Strongest evidence on SQL and impact.");
+      await expect(shortlist).toBeEnabled();
       await shortlist.click();
-      const reason = page.locator("textarea");
-      if (await reason.count()) {
-        await reason.fill("Strongest evidence on SQL and impact.");
-        await page.getByRole("button", { name: /shortlist|confirm|save/i }).last().click();
-      }
+      await expect(decided).toContainText(/shortlisted by ana ruiz/i);
     }
 
     await page.getByRole("button", { name: /share the shortlist/i }).click();
@@ -114,5 +119,60 @@ test.describe("a shared shortlist", () => {
     expect(response.status()).toBe(404);
 
     await stranger.close();
+  });
+});
+
+/**
+ * The headers the browser is asked to enforce.
+ *
+ * They live in nginx, so no Python test can see them, and a config edit could
+ * drop one silently. The policy also has to be *usable*: a CSP that breaks the
+ * panel gets relaxed by whoever hits it next, which is worse than not having one.
+ */
+test.describe("security headers", () => {
+  test("the served page carries the whole set", async ({ request }) => {
+    const response = await request.get("/");
+    const headers = response.headers();
+
+    const csp = headers["content-security-policy"];
+    expect(csp, "the policy is a header, not a meta tag").toBeTruthy();
+    for (const directive of [
+      "default-src 'self'",
+      "script-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'none'",
+      "object-src 'none'",
+    ]) {
+      expect(csp).toContain(directive);
+    }
+    // Scripts get no inline latitude, whatever styles need.
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-inline/);
+    expect(csp).not.toMatch(/script-src[^;]*unsafe-eval/);
+
+    expect(headers["x-content-type-options"]).toBe("nosniff");
+    expect(headers["x-frame-options"]).toBe("DENY");
+    expect(headers["referrer-policy"]).toBe("no-referrer");
+    expect(headers["strict-transport-security"]).toContain("max-age=");
+  });
+
+  test("the policy does not break the panel", async ({ page, browser }) => {
+    const refusals: string[] = [];
+    page.on("console", (message) => {
+      if (/Content Security Policy|Refused to/i.test(message.text())) refusals.push(message.text());
+    });
+
+    await signIn(page);
+    await openSeededOpening(page);
+    await page.locator(".exhibit").first().click();
+    await expect(page.locator(".plate-name")).toBeVisible();
+
+    // The scanned pages are same-origin PNGs from the API — what img-src has to
+    // allow, and the one thing most likely to be lost when a policy is tightened.
+    await page.getByRole("button", { name: /^document$/i }).click();
+    const firstPage = page.locator(".plate img").first();
+    await expect(firstPage).toBeVisible({ timeout: 10_000 });
+    expect(await firstPage.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBeGreaterThan(0);
+
+    expect(refusals).toEqual([]);
   });
 });

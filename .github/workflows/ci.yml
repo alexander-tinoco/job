@@ -130,6 +130,11 @@ jobs:
           printf 'correct-horse-battery\ncorrect-horse-battery\n' \
             | .venv/bin/python -m app.cli create-user demo@acme.com "Demo"
           .venv/bin/python scripts/seed_demo.py
+          # There is no OpenAI key here, so the seed's evaluate step answers 503
+          # and every candidate stays unscored — which is exactly what the panel
+          # journeys need. The scores are written from the recorded golden runs
+          # instead, with no call to the model.
+          .venv/bin/python scripts/seed_evaluations.py
 
       - name: Install Playwright
         working-directory: web
