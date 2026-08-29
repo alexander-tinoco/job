@@ -87,6 +87,71 @@ jobs:
       - name: Build
         run: npm run build
 
+  # The four journeys where a silent break shows up in no Python test: the API
+  # can be entirely correct while the panel renders nothing. Runs against the
+  # real stack, brought up with compose and seeded, because a mocked back end
+  # would only prove the front end agrees with the mock.
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - uses: astral-sh/setup-uv@v5
+
+      - name: Start the stack
+        env:
+          # Plain http in CI, where a Secure cookie would never be stored and
+          # every signed-in journey would fail on its second request.
+          COOKIE_SECURE: "false"
+        run: docker compose up -d --build db api web
+
+      - name: Wait for it
+        run: |
+          for i in $(seq 120); do
+            api=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8000/health || true)
+            web=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:5173/ || true)
+            [ "$api" = "200" ] && [ "$web" = "200" ] && exit 0
+            sleep 1
+          done
+          echo "stack did not come up"; docker compose logs --tail 80; exit 1
+
+      - name: Seed the demo data
+        working-directory: api
+        run: |
+          uv venv --python 3.14
+          uv pip install -e ".[dev]"
+          # getpass falls back to stdin without a TTY, so the two prompts are
+          # fed as two lines. It warns that input may be echoed; in CI that is
+          # a fixed demo password, printed in the README.
+          printf 'correct-horse-battery\ncorrect-horse-battery\n' \
+            | .venv/bin/python -m app.cli create-user demo@acme.com "Demo"
+          .venv/bin/python scripts/seed_demo.py
+
+      - name: Install Playwright
+        working-directory: web
+        run: |
+          npm ci
+          npx playwright install --with-deps chromium
+
+      - name: Run the journeys
+        working-directory: web
+        run: npx playwright test
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-traces
+          path: web/test-results/
+          retention-days: 7
+
+      - name: Stack logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+
   images:
     runs-on: ubuntu-latest
     steps:

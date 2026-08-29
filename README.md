@@ -428,6 +428,34 @@ mark is deliberately distinct from `missing must-haves`, which is the model read
 this one is the applicant's own answer. Screening answers are **excluded from a shared
 shortlist**: visa status and right to work are not for a link sent outside the company.
 
+## End-to-end journeys
+
+2,698 lines of front end had no test of any kind: CI ran `tsc --noEmit` and a production build,
+both of which pass while the panel renders nothing. Every interface check in this project used to
+be someone driving a browser by hand and reading the output.
+
+```bash
+docker compose up -d && (cd api && .venv/bin/python scripts/seed_demo.py)
+cd web && npm run e2e          # or npm run e2e:ui to watch it
+```
+
+Thirteen journeys over the four paths where a silent break shows up nowhere else: applying,
+signing in and reading the ranking, comparing two candidates, and opening a shared link with no
+session at all. They run against the **real stack** — a mocked back end would only prove the
+front end agrees with the mock.
+
+They assert the promises, not just the plumbing: that consent starts unchecked and the send button
+stays disabled without it; that the confirmation screen says *none is filtered out
+automatically*; that every finding cites a sentence **and the character offsets it sits at**;
+that hovering a finding lights that quote in the résumé; that a shared link opens in a browser
+context with no cookies and shows no email address and no way to act.
+
+Two things the suite learned the hard way, both written down beside the tests. Sign-in failures
+are counted per email, so a test that always fails as `nobody@example.com` locks that address out
+and starts asserting the lockout message instead — each run now uses a fresh address, and the
+lockout has a test of its own. And the seeded opening is selected **by id from the API**, because
+a development database accumulates openings whose titles repeat.
+
 ## Property-based tests
 
 The example tests elsewhere pin behaviour on résumés we chose. These state what must hold for
