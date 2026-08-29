@@ -69,6 +69,25 @@ def normalise(text: str) -> tuple[str, list[int]]:
     return "".join(characters), offsets
 
 
+def _fold(text: str, offsets: list[int]) -> tuple[str, list[int]]:
+    """Lower-case the text while keeping one offset per resulting character.
+
+    `str.lower()` is not length-preserving: `"İ".lower()` is two characters, an
+    `i` and a combining dot. Searching a lowered string and then indexing an
+    offset map built from the original therefore runs off the end — which it
+    did, raising `IndexError` out of `verify()` and, from the batch collector,
+    losing the whole tick rather than one row. A Turkish name in a résumé was
+    enough to trigger it.
+    """
+    folded: list[str] = []
+    mapped: list[int] = []
+    for character, offset in zip(text, offsets, strict=True):
+        lowered = character.lower()
+        folded.append(lowered)
+        mapped.extend([offset] * len(lowered))
+    return "".join(folded), mapped
+
+
 def find_quote(quote: str, source: str) -> VerifiedQuote:
     """Locate a quote in the résumé, or report that it is not there.
 
@@ -81,18 +100,20 @@ def find_quote(quote: str, source: str) -> VerifiedQuote:
         return VerifiedQuote(quote=quote, found=False, start=None, end=None)
 
     flat_source, offsets = normalise(source)
-    flat_quote, _ = normalise(stripped)
+    flat_quote, quote_offsets = normalise(stripped)
+    folded_source, folded_offsets = _fold(flat_source, offsets)
+    folded_quote, _ = _fold(flat_quote, quote_offsets)
 
-    position = flat_source.lower().find(flat_quote.lower())
-    if position < 0:
+    position = folded_source.find(folded_quote)
+    if position < 0 or not folded_quote:
         return VerifiedQuote(quote=quote, found=False, start=None, end=None)
 
-    last = position + len(flat_quote) - 1
+    last = position + len(folded_quote) - 1
     return VerifiedQuote(
         quote=quote,
         found=True,
-        start=offsets[position],
-        end=offsets[last] + 1,
+        start=folded_offsets[position],
+        end=folded_offsets[last] + 1,
     )
 
 

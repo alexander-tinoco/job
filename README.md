@@ -428,6 +428,30 @@ mark is deliberately distinct from `missing must-haves`, which is the model read
 this one is the applicant's own answer. Screening answers are **excluded from a shared
 shortlist**: visa status and right to work are not for a link sent outside the company.
 
+## Property-based tests
+
+The example tests elsewhere pin behaviour on résumés we chose. These state what must hold for
+*any* input and let Hypothesis go looking for the counterexample, which matters here because the
+inputs are strangers' PDFs.
+
+Four things are stated as properties: quote verification (layer 4 of the anti-injection design
+rests on it), the weighted score (the number the model is forbidden to emit), the duplicate
+estimator (a sampling approximation, and those are exactly the things that hold on the examples
+you tried), and the normalisation everything above is built on.
+
+**It found a crash on the first run.** `"İ".lower()` — the Turkish dotted capital I — is *two*
+characters, an `i` and a combining dot. `find_quote` searched a lower-cased string and then
+indexed an offset map built from the original, so the position ran off the end:
+
+```
+find_quote('01', '000İ01')  →  IndexError: list index out of range
+```
+
+`verify()` is called from `persist_evaluation`, which runs inside the batch collector with no
+guard around it, so the exception would propagate to the worker tick and roll back **the whole
+tick** rather than one row. A résumé from an İbrahim or an İstanbul was enough. Case folding now
+carries its own offset map, and the counterexample is kept as a named test beside the property.
+
 ## Recognising a résumé already seen
 
 Reapplying to the same opening is refused at the door, and reusing your own CV for a second

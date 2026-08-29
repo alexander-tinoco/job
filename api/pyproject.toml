@@ -35,6 +35,8 @@ dev = [
     "ruff>=0.9",
     "mypy>=1.14",
     "pytest-cov>=6.0",
+    # Property-based tests: the generator finds the inputs nobody thinks of.
+    "hypothesis>=6.140",
 ]
 
 [build-system]
