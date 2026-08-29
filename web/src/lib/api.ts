@@ -1,6 +1,7 @@
 import type {
   ApplicationDetail,
   Comparison,
+  DuplicateMatch,
   Decision,
   DecisionKind,
   Opening,
@@ -105,6 +106,12 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ kind, reason, decided_by: by }),
     }),
+
+  /** Other applications in the company carrying nearly this same résumé. */
+  duplicates: (applicationId: string) =>
+    request<{ matches: DuplicateMatch[] }>(
+      `/api/v1/applications/${applicationId}/duplicates`,
+    ),
 
   /** Served as an attachment by the API; never rendered inline. */
   resumeUrl: (applicationId: string) =>

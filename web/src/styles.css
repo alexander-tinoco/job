@@ -672,3 +672,61 @@ dialog.confirm p { font-size: 13.5px; line-height: 1.6; color: var(--graphite); 
   font-size: 12px;
   font-weight: 500;
 }
+
+/* --- Seen before ---------------------------------------------------------
+   Amber by the same law as every other amber: the instrument found something
+   the eye would not have. Not oxide — nothing here has failed verification, and
+   nothing is being rejected. */
+
+.seen-before {
+  padding: 14px 16px;
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+  background: var(--sheet);
+}
+.seen-before.flagged {
+  border-color: #e0bd7e;
+  background: var(--amber-wash);
+}
+
+.seen-before h3 {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 6px;
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 600;
+}
+.seen-before.flagged h3 { color: #74450a; }
+.seen-before h3 svg { width: 15px; height: 15px; flex: none; }
+
+.seen-before p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--graphite);
+}
+.seen-before.flagged p { color: #74450a; }
+
+.seen-before ul {
+  margin: 10px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+}
+.seen-before li {
+  padding: 8px 10px;
+  background: var(--sheet);
+  border: 1px solid var(--hairline);
+  border-radius: 2px;
+}
+.seen-who { display: block; font-size: 13px; font-weight: 500; }
+.seen-before .where {
+  display: block;
+  margin-top: 2px;
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--graphite);
+}

@@ -9,6 +9,7 @@ from app.api.v1 import (
     applications,
     auth,
     compare,
+    duplicates,
     evaluations,
     lifecycle,
     openings,
@@ -52,6 +53,7 @@ app.include_router(outreach.router)
 app.include_router(lifecycle.router)
 app.include_router(sharing.router)
 app.include_router(compare.router)
+app.include_router(duplicates.router)
 
 
 @app.get("/health")

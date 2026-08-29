@@ -9,6 +9,7 @@ from app.core.config import get_settings
 from app.db.models import Application, IntegrityReport, ResumeDocument
 from app.db.types import ApplicationState, IntegrityVerdict
 from app.ingest.pipeline import ExtractionError, ExtractionResult, extract
+from app.services.duplicates import fingerprint
 from app.services.queue import enqueue
 
 logger = logging.getLogger(__name__)
@@ -60,6 +61,7 @@ def ingest_application(session: Session, application: Application) -> IntegrityR
     resume.visible_text = result.visible_text
     resume.total_text = result.total_text
     resume.page_count = result.page_count
+    fingerprint(resume)
 
     report = IntegrityReport(
         application=application,

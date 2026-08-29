@@ -1,6 +1,7 @@
 """Operational commands that ship inside the image.
 
     python -m app.cli create-user you@company.com "Your Name"
+    python -m app.cli backfill-fingerprints
 
 Distinct from `scripts/`, which is development tooling and deliberately excluded
 from the container. Creating the first user is something a deployment has to do,
@@ -18,6 +19,7 @@ from app.core.security import WeakPasswordError
 from app.db.models import User
 from app.db.session import SessionLocal
 from app.services.auth import create_user, normalise_email
+from app.services.duplicates import backfill
 
 
 def _create_user(argv: list[str]) -> int:
@@ -49,7 +51,20 @@ def _create_user(argv: list[str]) -> int:
     return 0
 
 
-COMMANDS = {"create-user": _create_user}
+def _backfill_fingerprints(argv: list[str]) -> int:
+    """Fingerprint résumés ingested before duplicate detection existed."""
+    with SessionLocal() as session:
+        count = backfill(session)
+        session.commit()
+
+    print(f"Fingerprinted {count} résumé(s).")
+    return 0
+
+
+COMMANDS = {
+    "create-user": _create_user,
+    "backfill-fingerprints": _backfill_fingerprints,
+}
 
 
 def main(argv: list[str] | None = None) -> int:

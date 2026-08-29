@@ -188,6 +188,12 @@ class ResumeDocument(Base, TimestampMixin):
         TSVECTOR,
         Computed("to_tsvector('simple', coalesce(visible_text, ''))", persisted=True),
     )
+    # Fingerprints of the *visible* text, for recognising a résumé already seen.
+    # Nullable because a document ingested before this existed has neither, and
+    # inventing one would make it match nothing while looking as if it had been
+    # checked. See `app.services.duplicates`.
+    text_digest: Mapped[str | None] = mapped_column(String(64), index=True)
+    sketch: Mapped[list[int] | None] = mapped_column(JSONB)
 
     application: Mapped[Application] = relationship(back_populates="resume")
 

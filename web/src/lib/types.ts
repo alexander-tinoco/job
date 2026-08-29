@@ -154,3 +154,14 @@ export interface Comparison {
   /** The one or two criteria carrying the difference. */
   decisive: string[];
 }
+
+export interface DuplicateMatch {
+  application_id: string;
+  candidate_name: string;
+  opening_title: string;
+  /** Estimated overlap of the two documents, 0.0 to 1.0. */
+  similarity: number;
+  identical: boolean;
+  /** False is the finding: one document, two identities. */
+  same_person: boolean;
+}

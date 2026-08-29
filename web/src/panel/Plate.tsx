@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { LocatedIcon, UnverifiedIcon } from "../components/icons";
 import { api } from "../lib/api";
-import type { ApplicationDetail, DecisionKind } from "../lib/types";
+import type { ApplicationDetail, DecisionKind, DuplicateMatch } from "../lib/types";
 import { DocumentPlate } from "./Document";
 
 export function Plate({
@@ -52,6 +52,7 @@ export function Plate({
       </header>
 
       <Concealed detail={detail} />
+      <SeenBefore detail={detail} />
       <Objections detail={detail} />
 
       {detail.criteria.length > 0 && (
@@ -185,6 +186,77 @@ function NotYetExamined({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Other applications carrying this same document.
+ *
+ * Deliberately reports what was measured and never what it means. Two people
+ * sharing a CV might be plagiarism, a shared template, or an agency submitting
+ * on someone's behalf — the difference is not visible from here, and a product
+ * that guesses would be making the automatic rejection this one promises not to
+ * make.
+ */
+function SeenBefore({ detail }: { detail: ApplicationDetail }) {
+  const [matches, setMatches] = useState<DuplicateMatch[]>([]);
+
+  useEffect(() => {
+    let current = true;
+    // Cleared first, and not merely replaced when the answer arrives: the panel
+    // swaps `detail` under a mounted plate, so leaving the previous candidate's
+    // matches on screen would attribute one person's duplicate to another.
+    setMatches([]);
+    // A quiet failure is right here: this is a note beside an application, and
+    // an error banner over it would give the absence of a match more weight
+    // than the match itself.
+    api
+      .duplicates(detail.id)
+      .then((body) => current && setMatches(body.matches))
+      .catch(() => current && setMatches([]));
+    return () => {
+      current = false;
+    };
+  }, [detail.id]);
+
+  if (matches.length === 0) return null;
+  const others = matches.filter((match) => !match.same_person);
+
+  return (
+    <section className="section">
+      <h2>Seen before</h2>
+      <div className={others.length > 0 ? "seen-before flagged" : "seen-before"}>
+        <h3>
+          {others.length > 0 ? (
+            <>
+              <LocatedIcon /> This résumé is also on file under{" "}
+              {others.length === 1 ? "another name" : `${others.length} other names`}
+            </>
+          ) : (
+            "This candidate has applied before with the same résumé"
+          )}
+        </h3>
+        <p>
+          {others.length > 0
+            ? "Two applications carrying one document. That can be plagiarism, a shared template, or an agency applying on someone's behalf — nothing here can tell which, and nothing was decided because of it."
+            : "The same person, the same document, an earlier opening. Ordinary, and shown so the history is not lost."}
+        </p>
+        <ul>
+          {matches.map((match) => (
+            <li key={match.application_id}>
+              <span className="seen-who">{match.candidate_name}</span>
+              <span className="where">
+                {match.opening_title} ·{" "}
+                {match.identical
+                  ? "identical text"
+                  : `${Math.round(match.similarity * 100)}% the same`}
+                {match.same_person && " · same candidate"}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
   );
 }
 

@@ -244,6 +244,38 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Recognising a résumé already seen
+
+Reapplying to the same opening is refused at the door, and reusing your own CV for a second
+opening is ordinary. The arrangement no reviewer can spot alone is **one document submitted
+under two identities**.
+
+```
+GET /api/v1/applications/{id}/duplicates
+```
+
+Two fingerprints are taken at ingest, both from the *visible* text — matching on hidden text
+would let a document be disguised from this check by the very trick the ingest layer exists to
+catch. In the demo data the injected CV comes out identical to its clean twin, which is the
+point.
+
+- `text_digest` — SHA-256 of the normalised text. Lowercasing and dropping punctuation means a
+  re-export from another editor is not a disguise.
+- `sketch` — the 128 smallest hashes of the document's five-word shingles. Because the hash is
+  uniform, those are a uniform sample of the document, and two samples overlap in proportion to
+  how much the documents do. A set comparison becomes 128 integers per résumé, no extension
+  required. Below the cap the sketch is the whole set, so the overlap is counted exactly rather
+  than sampled.
+
+A document under about forty words is not compared at all: with a handful of shingles any
+overlap looks total, and silence beats a guess. Matching is scoped to the company — a match
+across tenants would reveal that another client holds the same candidate.
+
+**Nothing here scores, ranks or rejects anybody.** The panel reports what was measured and says
+plainly that plagiarism, a shared template and an agency applying on someone's behalf all look
+identical from here. Résumés ingested before this existed carry no fingerprint;
+`python -m app.cli backfill-fingerprints` gives them one.
+
 ## Comparing candidates
 
 A score answers "is this one any good". The decision is "this one or that one", and two totals
