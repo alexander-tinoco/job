@@ -10,6 +10,7 @@ triggered synchronously per candidate — about a cent for the whole set.
 from __future__ import annotations
 
 import http.cookiejar
+import json
 import os
 import sys
 import urllib.error
@@ -19,7 +20,6 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-import json  # noqa: E402
 import mimetypes  # noqa: E402
 import uuid  # noqa: E402
 from typing import Any  # noqa: E402
@@ -70,10 +70,15 @@ def sign_in() -> None:
     call("POST", "/api/v1/auth/login", {"email": EMAIL, "password": PASSWORD})
 
 
-def upload(slug: str, name: str, email: str, pdf: Path) -> None:
+def upload(
+    slug: str, name: str, email: str, pdf: Path, answers: dict[str, bool] | None = None
+) -> None:
     boundary = uuid.uuid4().hex
     parts: list[bytes] = []
-    for key, value in (("full_name", name), ("email", email), ("consent", "true")):
+    fields = [("full_name", name), ("email", email), ("consent", "true")]
+    if answers is not None:
+        fields.append(("answers", json.dumps(answers)))
+    for key, value in fields:
         parts.append(
             f'--{boundary}\r\nContent-Disposition: form-data; name="{key}"\r\n\r\n'
             f"{value}\r\n".encode()
@@ -96,7 +101,9 @@ def upload(slug: str, name: str, email: str, pdf: Path) -> None:
 
 def main() -> int:
     sign_in()
-    company = call("POST", "/api/v1/companies", {"name": "Mercadis"})
+    # One company per deployment, so a second run reuses the one that is there.
+    existing = call("GET", "/api/v1/companies")
+    company = existing[0] if existing else call("POST", "/api/v1/companies", {"name": "Mercadis"})
     slug = "data-analyst-demo"
     opening = call(
         "POST",
@@ -137,6 +144,62 @@ def main() -> int:
             print(f"  evaluated {item['candidate_name']}")
         except urllib.error.HTTPError as exc:
             print(f"  {item['candidate_name']}: {exc.code} {exc.read().decode()[:90]}")
+
+    # A second opening on the same company, to exercise screening questions: the
+    # first one deliberately asks none, so both shapes exist in the demo.
+    call(
+        "POST",
+        f"/api/v1/companies/{company['id']}/openings",
+        {
+            "title": "Night Shift Nurse",
+            "slug": "night-shift-nurse",
+            "description": (
+                "Intensive care, nights, in a twelve-bed unit. You will triage, manage "
+                "ventilators and train the nurses who arrive after you."
+            ),
+            "company_context": (
+                "A private clinic in Madrid, forty beds, chronically short at night."
+            ),
+            "criteria": [
+                {
+                    "name": "Critical care",
+                    "description": "Time in an ICU.",
+                    "weight": 60,
+                    "mandatory": True,
+                },
+                {
+                    "name": "Spanish",
+                    "description": "Fluent with patients and families.",
+                    "weight": 40,
+                },
+            ],
+            "screening_questions": [
+                {"text": "Do you have the right to work in Spain?", "expected_answer": True},
+                {"text": "Do you require visa sponsorship?", "expected_answer": False},
+            ],
+        },
+    )
+    questions = call("GET", "/openings/night-shift-nurse")["screening_questions"]
+    ids = {q["text"]: q["id"] for q in questions}
+    right, visa = (
+        ids["Do you have the right to work in Spain?"],
+        ids["Do you require visa sponsorship?"],
+    )
+    for name, email, answers in (
+        ("Ana Ruiz", "ana.ruiz", {right: True, visa: False}),
+        ("Bo Nilsson", "bo.nilsson", {right: False, visa: True}),
+    ):
+        try:
+            upload(
+                "night-shift-nurse",
+                name,
+                f"{email}@example.com",
+                PDFS / "chen.pdf",
+                answers=answers,
+            )
+            print(f"  uploaded {name} to night-shift-nurse")
+        except urllib.error.HTTPError as exc:
+            print(f"  {name}: {exc.code} {exc.read().decode()[:90]}")
 
     final = call("GET", f"/api/v1/openings/{opening_id}/applications?limit=50")
     print(f"\n{final['evaluated']}/{final['total']} evaluated")

@@ -37,6 +37,11 @@ class SecondCompanyError(Exception):
     """A deployment holds one company, and this one already has it."""
 
 
+def list_companies(session: Session) -> list[Company]:
+    """At most one, by construction. A list because that is what the route is."""
+    return list(session.scalars(select(Company).order_by(Company.created_at)))
+
+
 def create_company_once(session: Session, name: str) -> Company:
     """Create the deployment's company, and refuse to create a second.
 

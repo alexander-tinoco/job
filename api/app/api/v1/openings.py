@@ -22,6 +22,12 @@ def list_rubric_templates(_: CurrentUser) -> list[RubricTemplate]:
     return TEMPLATES
 
 
+@router.get("/companies", response_model=list[CompanyOut])
+def list_companies(session: SessionDep, _: CurrentUser) -> list[CompanyOut]:
+    """The deployment's company. At most one; see `create_company_once`."""
+    return [CompanyOut.model_validate(c) for c in service.list_companies(session)]
+
+
 @router.post("/companies", response_model=CompanyOut, status_code=status.HTTP_201_CREATED)
 def create_company(payload: CompanyCreate, session: SessionDep, _: CurrentUser) -> CompanyOut:
     try:

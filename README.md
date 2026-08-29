@@ -1,10 +1,137 @@
-# Candidate Screening
+# Verbatim
 
-AI-assisted résumé screening for small businesses. Applications are received through a public
-link, parsed deterministically, and scored against a weighted rubric with quoted evidence from
-the résumé itself. A person always makes the final call.
+**AI-assisted résumé screening that shows its work.** Applications arrive through a public link,
+are parsed deterministically, and are scored against a weighted rubric — with every score backed
+by a sentence quoted from the résumé and checked against it before it is shown. A person always
+makes the final call.
+
+![The panel, with the ranking on the left and one candidate's findings on the right](docs/screenshots/09-candidate-evidence.png)
+
+Three rules shape everything else:
+
+| | |
+|---|---|
+| **The model never emits the number that ranks anyone.** | It scores criteria 0–5; Python applies the rubric weights. A résumé that talks its way into a high criterion score still cannot rank itself. |
+| **Every quote is verified before it is shown.** | Found in the résumé character for character, with the offsets you see beside it. A quote that is not there flags the evaluation for a human. |
+| **Nothing is filtered out automatically.** | Every application is read. Declining takes a person, a reason, and an audit entry. |
 
 Full design: [`docs/PLAN-MVP.md`](docs/PLAN-MVP.md). Working rules: [`CLAUDE.md`](CLAUDE.md).
+A one-page overview to send someone: [`docs/Verbatim.pdf`](docs/Verbatim.pdf).
+
+---
+
+## What it looks like
+
+Every screenshot below is taken from the running stack by
+[`docs/capture.mjs`](docs/capture.mjs) — nothing here is a mockup, and the evaluations are real
+model output, not seeded text.
+
+### The applicant
+
+The public page for an opening, and the form: four fields and a PDF. **Consent is unchecked by
+default and the send button stays dead without it.**
+
+<p align="center">
+  <img src="docs/screenshots/02-opening-mobile.png" width="300" alt="The opening on a phone">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/03-application-form.png" width="470" alt="The application form">
+</p>
+
+An opening may ask a few yes/no questions. **Both answers look identical** — telling a candidate
+which one is wanted turns a question about a fact into a form to be filled in correctly — and
+answering "no" neither warns them nor blocks the form.
+
+![Screening questions, with no hint of which answer is wanted](docs/screenshots/04-screening-questions.png)
+
+An application cannot be unsent, so it is confirmed first. The receipt then says the thing the
+product is actually promising.
+
+<p align="center">
+  <img src="docs/screenshots/05-send-confirmation.png" width="440" alt="Send your application?">
+  &nbsp;&nbsp;
+  <img src="docs/screenshots/06-application-received.png" width="440" alt="Your application is in">
+</p>
+
+### The panel
+
+Candidates ranked by a score Python computed. The marks carry the whole state of a row at a
+glance: **concealed text**, missing must-haves, a decision already made.
+
+![The ranking](docs/screenshots/08-ranking.png)
+
+Note rows 04 and 05: the same résumé, one of them carrying a hidden instruction, **scoring
+identically at 48**. That is the anti-injection design working, reproduced live in the demo data
+rather than claimed.
+
+Search matches a surname, an address, or anything written inside a résumé. Wildcards are escaped
+and the query reaches Postgres as a bound parameter:
+
+<p align="center">
+  <img src="docs/screenshots/21-search.png" width="420" alt="Search by surname">
+</p>
+
+Reading one application, with the list out of the way:
+
+![One application, read with the list hidden](docs/screenshots/10-focused-reading.png)
+
+At the foot of every candidate: **who decided, why, and where the number came from.** The
+quotes are lit in the résumé itself, and the provenance line names the model, the prompt version
+and the rubric version — and says plainly that the score was computed, not written.
+
+![A decision, with its reason and the provenance of the score](docs/screenshots/22-decision.png)
+
+The document itself, rendered server-side as an image — never the PDF on the panel's own origin,
+because a stranger's PDF can carry script:
+
+![The résumé, rendered as an image](docs/screenshots/13-resume-document.png)
+
+When a résumé hides text from human readers, the concealed layer is raised and the passages are
+shown where they sat:
+
+![The concealed layer](docs/screenshots/11-concealed-layer.png)
+
+And when the same document arrives under two identities:
+
+![Seen before](docs/screenshots/12-seen-before.png)
+
+An applicant's own answers, shown to the reviewer with what the opening was asking for —
+**and a line saying that nothing was decided because of it**:
+
+![Stated by the applicant](docs/screenshots/16-stated-by-applicant.png)
+
+### Comparing two candidates
+
+The real question is not "is this one good" but "this one or that one". Because the overall score
+is a weighted sum, the gap decomposes exactly — so the screen names **where the difference lives**
+and what each row is worth:
+
+![Two candidates compared](docs/screenshots/14-compare.png)
+
+### Sharing a shortlist
+
+Whoever screens is rarely whoever decides. A read-only link, minted once and shown once:
+
+![The link, shown once](docs/screenshots/17-share-made.png)
+
+Opened with no session at all. Scores, criteria, quoted evidence and the résumé — and **no email,
+no phone, no LinkedIn, nobody who was declined, no control that writes anything**:
+
+<p align="center">
+  <img src="docs/screenshots/18-shared-shortlist.png" width="620" alt="The shared shortlist">
+</p>
+
+### The instruments
+
+Traces are exported over OTLP, so any backend works. The stack ships a viewer behind a compose
+profile — here is one request from the panel, with **every query nested under it and timed**:
+
+![A trace of one panel request](docs/screenshots/19-trace-waterfall.png)
+
+Twenty-one spans for one request: a session check, then one query per relation eagerly loaded — fifteen statements for thirteen candidates, and the same fifteen for two hundred. The count does not grow with the number of candidates, which is the property the N+1 test asserts and this is what it looks like.
+
+![The traffic, in the trace search](docs/screenshots/20-trace-search.png)
+
+---
 
 ## Requirements
 
@@ -16,7 +143,7 @@ Full design: [`docs/PLAN-MVP.md`](docs/PLAN-MVP.md). Working rules: [`CLAUDE.md`
 ## Running the whole thing
 
 ```bash
-cp .env.example .env            # then fill in OPENAI_API_KEY and ADMIN_TOKEN
+cp .env.example .env            # then fill in OPENAI_API_KEY
 docker compose up -d --build
 ```
 
@@ -42,11 +169,16 @@ The application page is deliberately **not** obscured. That link gets posted on 
 to be clean and readable, because a candidate who sees a scrambled URL assumes phishing.
 
 nginx serves the panel and proxies `/api` and `/openings` to the API, so the browser sees a
-single origin: no CORS, and the admin token never crosses an origin boundary.
+single origin: no CORS, and the session cookie never crosses an origin boundary. It is also
+where the security headers are set — the Content-Security-Policy included, so that
+`connect-src 'self'` is true rather than aspirational.
 
-**Compose reads the repository's `.env` automatically**, so `OPENAI_API_KEY` and `ADMIN_TOKEN`
-reach the containers without being written into `docker-compose.yml`. Override one for a single
-run with `ADMIN_TOKEN=... docker compose up -d`.
+![The public site](docs/screenshots/01-landing.png)
+
+**Compose reads the repository's `.env` automatically**, so `OPENAI_API_KEY` reaches the
+containers without being written into `docker-compose.yml`. Override one for a single run with
+`METRICS_TOKEN=... docker compose up -d`. Every setting is listed and explained in
+[`.env.example`](.env.example).
 
 ### Something to look at
 
@@ -168,6 +300,10 @@ Never `--no-verify`. If a hook gets in the way, fix the hook.
 ## Authentication
 
 Email and password, with a server-side session in an `HttpOnly` cookie.
+
+<p align="center">
+  <img src="docs/screenshots/07-sign-in.png" width="420" alt="Sign in">
+</p>
 
 ```bash
 cd api
@@ -423,7 +559,11 @@ cannot name the fields in advance. A partial set is refused rather than stored: 
 the panel exactly like a "no", which would put words in the applicant's mouth.
 
 In the panel the row is **marked, never hidden**: it keeps its rank and its score, carries a
-`said no to N requirements` label, and a **Said no** filter isolates those rows on demand. The
+`said no to N requirements` label, and a **Said no** filter isolates those rows on demand.
+
+<p align="center">
+  <img src="docs/screenshots/15-said-no-list.png" width="420" alt="A row marked, not hidden">
+</p> The
 mark is deliberately distinct from `missing must-haves`, which is the model reading the résumé —
 this one is the applicant's own answer. Screening answers are **excluded from a shared
 shortlist**: visa status and right to work are not for a link sent outside the company.
