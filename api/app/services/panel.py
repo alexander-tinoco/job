@@ -33,6 +33,7 @@ from app.schemas.panel import (
     SearchHit,
     SearchResults,
 )
+from app.services import screening
 
 EXCERPT_CHARS = 220
 
@@ -73,6 +74,7 @@ def _summary(application: Application) -> ApplicationSummary:
         hidden_text_chars=hidden,
         needs_human_review=bool(evaluation and evaluation.needs_human_review),
         decision=DecisionOut.model_validate(application.decision) if application.decision else None,
+        unmet_requirements=screening.unmet(application),
     )
 
 

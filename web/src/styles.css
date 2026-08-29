@@ -775,3 +775,5 @@ dialog.confirm p { font-size: 13.5px; line-height: 1.6; color: var(--graphite); 
   cursor: pointer;
 }
 .choice:has(input:checked) { border-color: var(--ink); background: #eef2f4; font-weight: 500; }
+/* The applicant's own answer, not our reading of their résumé. */
+.mark.stated { border-color: #e0bd7e; background: var(--amber-wash); color: #74450a; }

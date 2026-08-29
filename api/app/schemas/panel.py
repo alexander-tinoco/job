@@ -33,6 +33,10 @@ class ApplicationSummary(BaseModel):
     hidden_text_chars: int
     # Objections from our own verification, not observations about the person.
     needs_human_review: bool
+    # Screening questions the applicant answered differently from what the
+    # opening asked for. Their own words, and a note rather than a state: the
+    # row keeps its rank and its score.
+    unmet_requirements: list[str]
     decision: DecisionOut | None
 
 

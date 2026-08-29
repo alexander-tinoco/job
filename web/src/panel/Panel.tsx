@@ -14,7 +14,7 @@ import { Comparison } from "./Comparison";
 import { Exhibit } from "./Exhibit";
 import { Plate } from "./Plate";
 
-type Filter = "all" | "open" | "flagged" | "shortlisted";
+type Filter = "all" | "open" | "flagged" | "unmet" | "shortlisted";
 
 /** Three columns is already more than anyone reads at once. */
 const MAX_COMPARED = 3;
@@ -23,6 +23,7 @@ const FILTERS: { id: Filter; label: string }[] = [
   { id: "all", label: "Everyone" },
   { id: "open", label: "Undecided" },
   { id: "flagged", label: "Flagged" },
+  { id: "unmet", label: "Said no" },
   { id: "shortlisted", label: "Shortlisted" },
 ];
 
@@ -138,6 +139,7 @@ export function Panel({ me, onSignedOut }: { me: User; onSignedOut: () => void }
           (item.integrity !== null && item.integrity !== "clean")
         );
       }
+      if (filter === "unmet") return item.unmet_requirements.length > 0;
       if (filter === "shortlisted") return item.decision?.kind === "shortlist";
       return true;
     });

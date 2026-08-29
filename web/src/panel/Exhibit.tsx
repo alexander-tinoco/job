@@ -41,6 +41,7 @@ export function Exhibit({
         {(item.integrity === "tampered" ||
           item.needs_human_review ||
           item.mandatory_requirements_met === false ||
+          item.unmet_requirements.length > 0 ||
           item.decision) && (
           <span className="exhibit-marks">
             {item.integrity === "tampered" && (
@@ -55,6 +56,18 @@ export function Exhibit({
             )}
             {item.mandatory_requirements_met === false && (
               <span className="mark">missing must-haves</span>
+            )}
+            {/* Distinct from "missing must-haves" above, which is the model
+                reading the résumé. This is the applicant's own answer. */}
+            {item.unmet_requirements.length > 0 && (
+              // A label like its neighbours, not the question itself: the
+              // questions are on the candidate's page and in the tooltip.
+              <span className="mark stated" title={item.unmet_requirements.join(" · ")}>
+                said no to{" "}
+                {item.unmet_requirements.length === 1
+                  ? "a requirement"
+                  : `${item.unmet_requirements.length} requirements`}
+              </span>
             )}
             {item.decision && (
               <span className="mark decided">

@@ -264,6 +264,12 @@ Answers arrive as JSON in a form field, since the questions are per-opening and 
 cannot name the fields in advance. A partial set is refused rather than stored: a gap reads on
 the panel exactly like a "no", which would put words in the applicant's mouth.
 
+In the panel the row is **marked, never hidden**: it keeps its rank and its score, carries a
+`said no to N requirements` label, and a **Said no** filter isolates those rows on demand. The
+mark is deliberately distinct from `missing must-haves`, which is the model reading the résumé —
+this one is the applicant's own answer. Screening answers are **excluded from a shared
+shortlist**: visa status and right to work are not for a link sent outside the company.
+
 ## Recognising a résumé already seen
 
 Reapplying to the same opening is refused at the door, and reusing your own CV for a second

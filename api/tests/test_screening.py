@@ -238,3 +238,61 @@ def test_repeated_questions_are_refused(
         },
     )
     assert response.status_code == 422
+
+
+def test_the_ranking_row_carries_the_unmet_questions(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    """Marked, not hidden: the row keeps its place and its score."""
+    opening = make_opening(session, slug="scr-row")
+    _ask(
+        session,
+        opening,
+        ("Do you have the right to work in Spain?", True),
+        ("Do you require visa sponsorship?", False),
+    )
+    first, second = opening.screening_questions
+    session.commit()
+
+    fine = _apply(
+        client, opening.slug, answers=json.dumps({str(first.id): True, str(second.id): False})
+    ).json()
+    unmet = _apply(
+        client,
+        opening.slug,
+        full_name="Bo Nilsson",
+        email="bo@example.com",
+        answers=json.dumps({str(first.id): False, str(second.id): True}),
+    ).json()
+
+    page = client.get(f"/api/v1/openings/{opening.id}/applications").json()
+    rows = {row["id"]: row for row in page["items"]}
+
+    # Both are in the list, in the ordinary ranking.
+    assert page["total"] == 2
+    assert rows[fine["application_id"]]["unmet_requirements"] == []
+    assert rows[unmet["application_id"]]["unmet_requirements"] == [
+        "Do you have the right to work in Spain?",
+        "Do you require visa sponsorship?",
+    ]
+
+
+def test_the_shared_shortlist_never_carries_screening_answers(
+    client: TestClient, session: Session, auth: dict[str, str]
+) -> None:
+    """Visa status and right to work are not for a link sent outside the company."""
+    opening = make_opening(session, slug="scr-shared")
+    _ask(session, opening, ("Do you require visa sponsorship?", False))
+    question = opening.screening_questions[0]
+    session.commit()
+    _apply(client, opening.slug, answers=json.dumps({str(question.id): True}))
+
+    created = client.post(
+        f"/api/v1/openings/{opening.id}/share", json={"scope": "shortlist", "days": 7}
+    ).json()
+    token = str(created["url_path"]).rsplit("/", 1)[1]
+    client.post("/api/v1/auth/logout")
+
+    body = client.get(f"/api/v1/shared/{token}").text
+    assert "visa" not in body.lower()
+    assert "screening" not in body.lower()

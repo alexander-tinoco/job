@@ -29,6 +29,8 @@ export interface ApplicationSummary {
   hidden_text_chars: number;
   needs_human_review: boolean;
   decision: Decision | null;
+  /** Questions the applicant answered differently from what the opening asked. */
+  unmet_requirements: string[];
 }
 
 export interface Evidence {
