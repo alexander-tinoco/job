@@ -322,6 +322,31 @@ a running container rather than a unit test.
 deployment pays for building a span and nothing else, so the $10/month box stays a $10/month box
 and no collector is required to run the thing.
 
+OpenTelemetry has no interface of its own — it is the SDK and the wire protocol, and something
+else has to receive and draw what it sends. The stack ships one behind a compose profile, so the
+ordinary `docker compose up` stays three containers:
+
+```bash
+OTEL_ENDPOINT=http://jaeger:4318/v1/traces docker compose --profile tracing up -d
+# then http://localhost:16686
+```
+
+Because the export is plain OTLP over HTTP, any backend works by changing that one variable and
+nothing else — Grafana Cloud and Honeycomb both take it on their free tiers. That portability is
+the reason for using OpenTelemetry rather than a vendor SDK.
+
+What a trace actually shows, taken from the running stack — the panel's ranked list, with every
+query nested under the request and timed:
+
+```
+GET /api/v1/openings/{opening_id}/applications            56.80 ms   20 spans
+│  connect                                                 0.45 ms
+│  SELECT screening  ×13                            0.68 – 2.41 ms each
+```
+
+Thirteen queries for twenty-five candidates, and the count does not move with the number of
+candidates. The same fact the N+1 test asserts, in a form you can point at.
+
 **Metrics.** `GET /metrics`, Prometheus exposition:
 
 ```

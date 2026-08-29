@@ -15,6 +15,27 @@ services:
       timeout: 5s
       retries: 5
 
+  # Trace viewer, behind a profile so the ordinary stack stays three containers.
+  #
+  #   OTEL_ENDPOINT=http://jaeger:4318/v1/traces \
+  #     docker compose --profile tracing up -d
+  #
+  # Then http://localhost:16686. Storage is in memory: restarting the container
+  # discards every trace, which is what you want on a laptop and never in a
+  # deployment.
+  jaeger:
+    image: cr.jaegertracing.io/jaegertracing/jaeger:2.20.0
+    profiles: ["tracing"]
+    ports:
+      - "16686:16686"   # the UI
+      - "4318:4318"     # OTLP over HTTP, the endpoint the API exports to
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:16686/ >/dev/null || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
   api:
     build:
       context: ./api
