@@ -67,6 +67,20 @@ class IntegrityOut(BaseModel):
     matched_patterns: list[str]
 
 
+class ScreeningAnswerOut(BaseModel):
+    """One question as the reviewer sees it.
+
+    Unlike the public form, this carries `expected_answer`: whoever reviews has
+    to know what the opening was asking for to read the answer at all.
+    """
+
+    question_id: uuid.UUID
+    text: str
+    answer: bool
+    expected_answer: bool
+    matches: bool
+
+
 class ApplicationDetail(BaseModel):
     id: uuid.UUID
     opening_id: uuid.UUID
@@ -103,6 +117,8 @@ class ApplicationDetail(BaseModel):
     criteria: list[CriterionScoreOut]
     integrity: IntegrityOut | None
     decision: DecisionOut | None
+    # The applicant's own declarations. Nothing consumes these but the screen.
+    screening_answers: list[ScreeningAnswerOut]
 
 
 class RankedPage(BaseModel):

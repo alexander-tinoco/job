@@ -51,6 +51,7 @@ export function Plate({
         )}
       </header>
 
+      <Stated detail={detail} />
       <Concealed detail={detail} />
       <SeenBefore detail={detail} />
       <Objections detail={detail} />
@@ -186,6 +187,47 @@ function NotYetExamined({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * What the applicant said about themselves.
+ *
+ * Their declaration, not our finding, and it decides nothing: the plan rules
+ * out a pre-filter that rejects candidates, so an unmet requirement is a line
+ * on this page and never a state the application is in. Declining still takes
+ * a person and a reason.
+ */
+function Stated({ detail }: { detail: ApplicationDetail }) {
+  const answers = detail.screening_answers;
+  if (answers.length === 0) return null;
+  const unmet = answers.filter((answer) => !answer.matches);
+
+  return (
+    <section className="section">
+      <h2>Stated by the applicant</h2>
+      <ul className="stated">
+        {answers.map((answer) => (
+          <li key={answer.question_id} className={answer.matches ? "" : "unmet"}>
+            <span className="stated-q">{answer.text}</span>
+            <span className="stated-a">
+              {answer.answer ? "Yes" : "No"}
+              {!answer.matches && (
+                <span className="stated-wanted">
+                  · the opening asks for {answer.expected_answer ? "yes" : "no"}
+                </span>
+              )}
+            </span>
+          </li>
+        ))}
+      </ul>
+      {unmet.length > 0 && (
+        <p className="stated-note">
+          Answered by the candidate when applying. Nothing was decided because of it, and they
+          were scored like everyone else.
+        </p>
+      )}
+    </section>
   );
 }
 

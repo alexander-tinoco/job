@@ -244,6 +244,26 @@ With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the a
 dropping the message. A product that silently swallows rejection emails is worse than one that
 cannot send them.
 
+## Screening questions
+
+An opening can ask up to five yes/no questions — right to work, visa sponsorship, a licence.
+They are **facts the applicant states**, and the plan rules out a pre-filter that rejects
+candidates (§7 "Out"), so an answer decides nothing on its own.
+
+Concretely, someone whose answer is not the one the opening wanted still gets an application,
+still gets evaluated by the model, still appears in the ranking, and still has to be declined by
+a person with a reason. The unmet answer is a line on their page.
+
+`expected_answer` is stored on the question and **never leaves the panel**. The public form
+shows the text and two identical buttons: telling a candidate which answer is wanted turns a
+question about a fact into a form to be filled in correctly. Answering "no" does not warn them,
+disable the form, or change what they are told — a test asserts the field is absent from the
+whole public payload.
+
+Answers arrive as JSON in a form field, since the questions are per-opening and the browser
+cannot name the fields in advance. A partial set is refused rather than stored: a gap reads on
+the panel exactly like a "no", which would put words in the applicant's mouth.
+
 ## Recognising a résumé already seen
 
 Reapplying to the same opening is refused at the door, and reusing your own CV for a second

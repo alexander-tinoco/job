@@ -7,7 +7,7 @@ from app.api.deps import SessionDep
 from app.db.models import ResumeDocument
 from app.schemas.applications import ApplicantDetails, ApplicationReceipt
 from app.services import applications as service
-from app.services import ingestion, storage
+from app.services import ingestion, screening, storage
 from app.services import openings as openings_service
 
 router = APIRouter(prefix="/openings", tags=["public"])
@@ -27,11 +27,19 @@ async def apply(
     resume: Annotated[UploadFile, File()],
     phone: Annotated[str | None, Form()] = None,
     linkedin_url: Annotated[str | None, Form()] = None,
+    # JSON in a form field: the questions are per-opening, so the browser cannot
+    # name the fields in advance.
+    answers: Annotated[str | None, Form()] = None,
 ) -> ApplicationReceipt:
     """Public application endpoint. No auth: the slug is the invitation."""
     opening = openings_service.get_opening_by_slug(session, slug)
     if opening is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, detail="Opening not found.")
+
+    try:
+        stated = screening.parse(answers)
+    except screening.AnswerError as exc:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
 
     if not consent:
         raise HTTPException(
@@ -67,6 +75,12 @@ async def apply(
     except storage.NotAPdfError as exc:
         session.rollback()
         raise HTTPException(status.HTTP_415_UNSUPPORTED_MEDIA_TYPE, detail=str(exc)) from exc
+
+    try:
+        screening.record(application, opening, stated)
+    except screening.AnswerError as exc:
+        session.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT, detail=str(exc)) from exc
 
     application.resume = ResumeDocument(storage_path=stored.relative_path)
     session.flush()

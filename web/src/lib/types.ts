@@ -92,6 +92,8 @@ export interface ApplicationDetail {
   criteria: CriterionScore[];
   integrity: Integrity | null;
   decision: Decision | null;
+  /** The applicant's own declarations. Nothing consumes them but the screen. */
+  screening_answers: ScreeningAnswer[];
 }
 
 export interface RankedPage {
@@ -153,6 +155,20 @@ export interface Comparison {
   criteria: ComparedCriterion[];
   /** The one or two criteria carrying the difference. */
   decisive: string[];
+}
+
+export interface ScreeningQuestion {
+  id: string;
+  text: string;
+  /** No `expected_answer`: the API never tells an applicant which answer is wanted. */
+}
+
+export interface ScreeningAnswer {
+  question_id: string;
+  text: string;
+  answer: boolean;
+  expected_answer: boolean;
+  matches: boolean;
 }
 
 export interface DuplicateMatch {

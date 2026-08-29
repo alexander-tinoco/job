@@ -730,3 +730,48 @@ dialog.confirm p { font-size: 13.5px; line-height: 1.6; color: var(--graphite); 
   font-size: 10.5px;
   color: var(--graphite);
 }
+
+/* --- Stated by the applicant ---------------------------------------------
+   Amber, not oxide: an unmet requirement is something the instrument surfaced,
+   not a failed verification and not a rejection. */
+
+.stated { margin: 0; padding: 0; list-style: none; display: grid; gap: 1px; background: var(--hairline); border: 1px solid var(--hairline); }
+.stated li {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 12px;
+  background: var(--sheet);
+}
+.stated li.unmet { background: var(--amber-wash); }
+.stated-q { font-size: 13px; line-height: 1.45; }
+.stated-a {
+  flex: none;
+  font-family: var(--mono);
+  font-size: 12px;
+  font-weight: 500;
+}
+.stated li.unmet .stated-a { color: #74450a; }
+.stated-wanted { margin-left: 6px; font-weight: 400; font-size: 10.5px; color: var(--graphite); }
+.stated li.unmet .stated-wanted { color: #8a6a2f; }
+.stated-note { margin: 8px 0 0; font-size: 11.5px; line-height: 1.5; color: var(--graphite); }
+
+/* --- Screening questions on the public form ------------------------------ */
+
+.questions { margin: 0 0 18px; padding: 14px 16px; border: 1px solid var(--hairline); border-radius: 2px; background: var(--sheet); }
+.questions legend { padding: 0 6px; font-size: 12px; font-weight: 500; color: var(--graphite); }
+.question + .question { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--hairline); }
+.question p { margin: 0 0 8px; font-size: 14px; line-height: 1.5; }
+.choices { display: flex; gap: 10px; }
+.choice {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 14px;
+  border: 1px solid var(--hairline-strong);
+  border-radius: 2px;
+  font-size: 13px;
+  cursor: pointer;
+}
+.choice:has(input:checked) { border-color: var(--ink); background: #eef2f4; font-weight: 500; }

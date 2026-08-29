@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Confirm } from "../components/Confirm";
 import { navigate } from "../lib/router";
+import type { ScreeningQuestion } from "../lib/types";
 
 interface PublicOpening {
   slug: string;
@@ -9,6 +10,7 @@ interface PublicOpening {
   company_name: string;
   status: "open" | "closed";
   closes_at: string | null;
+  screening_questions: ScreeningQuestion[];
 }
 
 const MAX_BYTES = 10 * 1024 * 1024;
@@ -80,6 +82,9 @@ export function Apply({ slug }: { slug: string }) {
 
 function ApplicationForm({ opening }: { opening: PublicOpening }) {
   const [file, setFile] = useState<File | null>(null);
+  // Undefined until answered, so an untouched question cannot be submitted as
+  // a "no" the applicant never gave.
+  const [answers, setAnswers] = useState<Record<string, boolean>>({});
   const [consent, setConsent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
@@ -104,6 +109,15 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
       setError("Please attach your résumé as a PDF.");
       return;
     }
+    const unanswered = opening.screening_questions.filter((q) => !(q.id in answers));
+    if (unanswered.length > 0) {
+      setError(
+        unanswered.length === 1
+          ? "Please answer the question above."
+          : "Please answer the questions above.",
+      );
+      return;
+    }
     setError(null);
     // An application cannot be unsent, and a candidate gets one.
     setConfirming(true);
@@ -117,6 +131,9 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
     const body = new FormData(form.current);
     body.set("consent", "true");
     body.set("resume", file);
+    if (opening.screening_questions.length > 0) {
+      body.set("answers", JSON.stringify(answers));
+    }
 
     try {
       const response = await fetch(`/openings/${encodeURIComponent(opening.slug)}/apply`, {
@@ -165,6 +182,35 @@ function ApplicationForm({ opening }: { opening: PublicOpening }) {
         <span>LinkedIn — optional</span>
         <input className="field" name="linkedin_url" inputMode="url" />
       </label>
+
+      {opening.screening_questions.length > 0 && (
+        <fieldset className="questions">
+          <legend>A few questions about the role</legend>
+          {opening.screening_questions.map((question) => (
+            <div key={question.id} className="question">
+              <p>{question.text}</p>
+              {/* Both choices look identical. Nothing on this page hints at
+                  which answer the opening is looking for, and answering "no"
+                  neither blocks the form nor warns the applicant off. */}
+              <div className="choices">
+                {[true, false].map((value) => (
+                  <label key={String(value)} className="choice">
+                    <input
+                      type="radio"
+                      name={`question-${question.id}`}
+                      checked={answers[question.id] === value}
+                      onChange={() =>
+                        setAnswers((current) => ({ ...current, [question.id]: value }))
+                      }
+                    />
+                    <span>{value ? "Yes" : "No"}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          ))}
+        </fieldset>
+      )}
 
       <label className="stack">
         <span>Résumé</span>

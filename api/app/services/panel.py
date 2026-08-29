@@ -18,6 +18,7 @@ from app.db.models import (
     Evaluation,
     JobOpening,
     ResumeDocument,
+    ScreeningAnswer,
 )
 from app.schemas.panel import (
     ApplicationDetail,
@@ -28,6 +29,7 @@ from app.schemas.panel import (
     HiddenSpanOut,
     IntegrityOut,
     RankedPage,
+    ScreeningAnswerOut,
     SearchHit,
     SearchResults,
 )
@@ -42,6 +44,7 @@ def _loaded() -> list[object]:
         selectinload(Application.integrity),
         selectinload(Application.decision),
         selectinload(Application.evaluation).selectinload(Evaluation.scores),
+        selectinload(Application.screening_answers).selectinload(ScreeningAnswer.question),
     ]
 
 
@@ -196,6 +199,16 @@ def detail(session: Session, application_id: uuid.UUID) -> ApplicationDetail | N
             else None
         ),
         decision=DecisionOut.model_validate(application.decision) if application.decision else None,
+        screening_answers=[
+            ScreeningAnswerOut(
+                question_id=answer.question_id,
+                text=answer.question.text,
+                answer=answer.answer,
+                expected_answer=answer.question.expected_answer,
+                matches=answer.answer == answer.question.expected_answer,
+            )
+            for answer in sorted(application.screening_answers, key=lambda a: a.question.position)
+        ],
     )
 
 

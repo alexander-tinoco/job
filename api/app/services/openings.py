@@ -4,7 +4,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.slug import slugify
-from app.db.models import Company, Criterion, JobOpening
+from app.db.models import Company, Criterion, JobOpening, ScreeningQuestion
 from app.db.types import OpeningStatus
 from app.schemas.openings import OpeningCreate
 
@@ -50,6 +50,10 @@ def create_opening(session: Session, company: Company, payload: OpeningCreate) -
                 position=index,
             )
             for index, c in enumerate(payload.criteria, start=1)
+        ],
+        screening_questions=[
+            ScreeningQuestion(text=q.text, expected_answer=q.expected_answer, position=index)
+            for index, q in enumerate(payload.screening_questions, start=1)
         ],
     )
     session.add(opening)

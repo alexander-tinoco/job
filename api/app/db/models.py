@@ -85,6 +85,11 @@ class JobOpening(Base, TimestampMixin):
     criteria: Mapped[list[Criterion]] = relationship(
         back_populates="opening", cascade="all, delete-orphan"
     )
+    screening_questions: Mapped[list[ScreeningQuestion]] = relationship(
+        back_populates="opening",
+        cascade="all, delete-orphan",
+        order_by="ScreeningQuestion.position",
+    )
     applications: Mapped[list[Application]] = relationship(
         back_populates="opening", cascade="all, delete-orphan"
     )
@@ -108,6 +113,57 @@ class Criterion(Base, TimestampMixin):
     position: Mapped[int] = mapped_column(Integer, nullable=False)
 
     opening: Mapped[JobOpening] = relationship(back_populates="criteria")
+
+
+class ScreeningQuestion(Base, TimestampMixin):
+    """A yes/no fact the opening asks every applicant to state.
+
+    Deliberately *not* a filter. The plan rules out a pre-filter that rejects
+    candidates (§7 "Out"), so an answer here decides nothing on its own: it is
+    recorded as the candidate's own declaration and shown to whoever reviews.
+    Rejecting still takes a person and a reason, like every other decision.
+    """
+
+    __tablename__ = "screening_questions"
+    __table_args__ = (
+        UniqueConstraint(
+            "job_opening_id", "position", name="uq_screening_questions_opening_position"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    job_opening_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("job_openings.id", ondelete="CASCADE"), nullable=False
+    )
+    text: Mapped[str] = mapped_column(String(300), nullable=False)
+    # The answer the opening is looking for. Anything else is a note beside the
+    # application, never a rejection.
+    expected_answer: Mapped[bool] = mapped_column(nullable=False, default=True)
+    position: Mapped[int] = mapped_column(Integer, nullable=False)
+
+    opening: Mapped[JobOpening] = relationship(back_populates="screening_questions")
+
+
+class ScreeningAnswer(Base, TimestampMixin):
+    """What one applicant answered. Their statement, not our finding."""
+
+    __tablename__ = "screening_answers"
+    __table_args__ = (
+        UniqueConstraint(
+            "application_id", "question_id", name="uq_screening_answers_application_question"
+        ),
+    )
+
+    id: Mapped[uuid.UUID] = _pk()
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("applications.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    question_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("screening_questions.id", ondelete="CASCADE"), nullable=False
+    )
+    answer: Mapped[bool] = mapped_column(nullable=False)
+
+    question: Mapped[ScreeningQuestion] = relationship()
 
 
 class Candidate(Base, TimestampMixin):
@@ -165,6 +221,9 @@ class Application(Base, TimestampMixin):
     )
     outreach: Mapped[OutreachDraft | None] = relationship(
         back_populates="application", cascade="all, delete-orphan", uselist=False
+    )
+    screening_answers: Mapped[list[ScreeningAnswer]] = relationship(
+        cascade="all, delete-orphan", order_by="ScreeningAnswer.created_at"
     )
 
 

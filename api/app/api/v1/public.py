@@ -1,7 +1,7 @@
 from fastapi import APIRouter, HTTPException, status
 
 from app.api.deps import SessionDep
-from app.schemas.openings import PublicOpeningOut
+from app.schemas.openings import PublicOpeningOut, PublicScreeningQuestion
 from app.services import openings as service
 
 router = APIRouter(prefix="/openings", tags=["public"])
@@ -20,4 +20,8 @@ def get_public_opening(slug: str, session: SessionDep) -> PublicOpeningOut:
         company_name=opening.company.name,
         status=opening.status,
         closes_at=opening.closes_at,
+        screening_questions=[
+            PublicScreeningQuestion(id=question.id, text=question.text)
+            for question in opening.screening_questions
+        ],
     )
