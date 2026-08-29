@@ -107,10 +107,18 @@ source = ["app", "/app/app"]
 
 [tool.mypy]
 python_version = "3.14"
+# Strict over the whole application, declared here rather than per module.
+#
+# It used to be declared for `app.ai.*` and `app.ingest.*` only, and the README
+# said so. That was wrong: mypy applies the `strict` flag from a per-module
+# section globally, so every package had been checked strictly all along and the
+# configuration described something that was not happening. Measured, not read:
+# an identical probe file produced identical errors in `app/services/` and
+# `app/ingest/`, and removing the override dropped `app/services/` to one.
+#
+# Written globally so the config says what is true and cannot drift back.
+strict = true
 warn_unused_configs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
-disallow_untyped_defs = true
 exclude = ["^tests/", "^mutants/"]
 
 # Test helpers are imported by scripts, so mypy follows them past the exclude.
@@ -118,10 +126,12 @@ exclude = ["^tests/", "^mutants/"]
 module = ["tests.*"]
 ignore_errors = true
 
-# Strict where correctness matters most: the AI boundary and the PDF pipeline.
+# Scripts are development tooling and talk to the network with hand-rolled
+# urllib; they are typed, but not held to the application's bar.
 [[tool.mypy.overrides]]
-module = ["app.ai.*", "app.ingest.*"]
-strict = true
+module = ["scripts.*"]
+strict = false
+disallow_untyped_defs = true
 
 [tool.mutmut]
 # Mutation testing answers the question coverage cannot: do the tests *notice*

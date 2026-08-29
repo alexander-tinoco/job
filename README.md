@@ -956,7 +956,7 @@ noise:
 | **Coverage ≥ 93%** | `--cov`, `fail_under` in `pyproject.toml` | **Branch** coverage, stricter than line coverage — the same suite reads 96% on lines. A floor set just under where the suite sits, so it catches a drop and not a rounding change |
 | **Complexity ≤ 8** | ruff `C90` | Two functions were over it and were **split**, rather than the gate being set to fit them. The number is arbitrary; holding it is not |
 | **Security rules** | ruff `S` (bandit) | Was available and switched off. Turning it on found eight things, all benign on inspection — which is the argument for it, since a real one had nowhere to hide |
-| **Types** | `mypy`, strict in `app.ai` and `app.ingest` | The AI boundary and the PDF pipeline are where a wrong type becomes a wrong decision |
+| **Types** | `mypy --strict`, over all of `app/` | Declared globally rather than per package, after measuring that a per-module `strict` had been applying everywhere anyway while the config claimed otherwise |
 
 The `S` exclusions are per-file and each has a reason in `pyproject.toml`: `assert` is right in a
 measurement script, a test suite is made of asserts, and `TOKEN_BUDGET_KEY` is a dictionary key

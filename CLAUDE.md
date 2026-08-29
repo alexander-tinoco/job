@@ -147,7 +147,7 @@ Never `--no-verify`. If a hook gets in the way, fix the hook — don't bypass it
 
 ## Code rules
 
-- Python 3.14. Types on every public signature. `mypy --strict` in `app/ai/` and `app/ingest/`.
+- Python 3.14. Types on every public signature. `mypy --strict` over all of `app/`.
 - No `Any` at boundaries (endpoints, schemas, public return types).
 - `ruff` for linting and formatting. No personal config: whatever `pyproject.toml` says.
 - Pydantic v2 for anything crossing a boundary (HTTP or the OpenAI API).
