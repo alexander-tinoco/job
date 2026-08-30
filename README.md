@@ -9,6 +9,7 @@
   <img src="https://img.shields.io/badge/coverage-94%25%20branch-brightgreen?style=flat-square" alt="Branch coverage 94%">
   <img src="https://img.shields.io/badge/mutants%20killed-614%2F615-brightgreen?style=flat-square" alt="614 of 615 mutants killed">
   <img src="https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ready">
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue?style=flat-square" alt="MIT License"></a>
 </p>
 
 Small businesses get two hundred applications and read the first fifty properly. Verbatim reads
@@ -244,3 +245,8 @@ docs/           the plan, the measurements, the deck, the screenshots
   measurements.md  every API cost measured, retractions included
   Verbatim.pdf     an 18-page overview to send someone
 ```
+
+## License
+
+[MIT](LICENSE). The résumés under `api/tests/golden/` are synthetic — invented people, invented
+careers — so nothing in this repository is anyone's real application.

@@ -65,7 +65,11 @@ test.describe("a shared shortlist", () => {
     await expect(page.locator(".plate-name")).toBeVisible();
 
     const shortlist = page.getByRole("button", { name: /^shortlist$/i });
-    const decided = page.locator(".decided");
+    // `div.decided`, not `.decided`: the class is also on the chip in the list
+    // row, so the bare selector matches two elements the moment a decision
+    // exists and strict mode refuses it. This passed locally only because the
+    // candidate was already shortlisted there and the branch never ran.
+    const decided = page.locator("div.decided");
     if (await shortlist.count()) {
       await expect(shortlist).toBeDisabled();
       await page.getByPlaceholder(/your name/i).fill("Ana Ruiz");
