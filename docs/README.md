@@ -4,8 +4,8 @@
 |---|---|
 | [`PLAN-MVP.md`](PLAN-MVP.md) | The design, revision 5. Source of truth for the MVP's scope |
 | [`measurements.md`](measurements.md) | Every API cost measured, including the claims that were retracted |
+| [`ENGINEERING.md`](ENGINEERING.md) | How every part works, and why it works that way rather than the obvious way |
 | [`Verbatim.pdf`](Verbatim.pdf) | An 18-page overview to send someone: the product, the economics, the risks |
-| [`decisions/`](decisions) | Short ADRs for structural choices |
 | `screenshots/` | Every image in the README and the deck |
 
 ## Rebuilding the screenshots and the PDF

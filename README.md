@@ -1,1143 +1,246 @@
-# Verbatim
+<h1 align="center">Verbatim</h1>
+<p align="center"><b>AI-assisted résumé screening where every score carries the sentence it came from — checked against the document before it is shown.</b></p>
 
-**AI-assisted résumé screening that shows its work.** Applications arrive through a public link,
-are parsed deterministically, and are scored against a weighted rubric — with every score backed
-by a sentence quoted from the résumé and checked against it before it is shown. A person always
-makes the final call.
+<p align="center">
+  <a href="https://github.com/alexander-tinoco/job/actions/workflows/ci.yml"><img src="https://github.com/alexander-tinoco/job/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <img src="https://img.shields.io/badge/python-3.14-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python 3.14">
+  <img src="https://img.shields.io/badge/FastAPI-async-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI">
+  <img src="https://img.shields.io/badge/React-19-61DAFB?style=flat-square&logo=react&logoColor=white" alt="React 19">
+  <img src="https://img.shields.io/badge/coverage-94%25%20branch-brightgreen?style=flat-square" alt="Branch coverage 94%">
+  <img src="https://img.shields.io/badge/mutants%20killed-614%2F615-brightgreen?style=flat-square" alt="614 of 615 mutants killed">
+  <img src="https://img.shields.io/badge/docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" alt="Docker ready">
+</p>
 
-![The panel, with the ranking on the left and one candidate's findings on the right](docs/screenshots/09-candidate-evidence.png)
+Small businesses get two hundred applications and read the first fifty properly. Verbatim reads
+all of them and shows its work: a weighted score, the criteria behind it, and for every criterion
+the literal sentences from the résumé that justify it. It's a portfolio project, built to
+production standards rather than a CRUD demo with an AI theme on top — and the parts that are
+**not** proven are stated as plainly as the parts that are.
 
-Three rules shape everything else:
+- **The model never emits the number that ranks anyone.** It scores criteria 0–5; Python applies the rubric weights
+- **Every quote is verified** character for character against the résumé, with the offsets shown; an invented one flags the evaluation for a human
+- **Four anti-injection layers, none of which trust the model** — a tampered résumé scores identically to its clean twin, measured
+- **$0.00031 per résumé**, measured, not estimated: one batched AI call per candidate and arithmetic for everything else
+- **Nothing is filtered out automatically.** Declining takes a person, a reason and an audit entry
+- OpenTelemetry traces, canonical logs and Prometheus metrics, all off-by-default and free when unconfigured
+- **415 Python tests, 15 browser journeys, 94% branch coverage**, property-based tests and mutation testing in CI
+
+## Screenshots
+
+<table>
+  <tr>
+    <td width="33%"><img src="docs/screenshots/08-ranking.png" alt="The ranking"><br><sub>The ranking. Rows 04 and 05 are the same résumé — one hiding an instruction — and both score 48</sub></td>
+    <td width="33%"><img src="docs/screenshots/09-candidate-evidence.png" alt="Evidence"><br><sub>Every criterion with its weight, its rating and the quotes behind it, each with its offsets</sub></td>
+    <td width="33%"><img src="docs/screenshots/14-compare.png" alt="Comparison"><br><sub>Two candidates, with the gap attributed to the criteria that carry it</sub></td>
+  </tr>
+  <tr>
+    <td><img src="docs/screenshots/11-concealed-layer.png" alt="Concealed layer"><br><sub>Text hidden from human readers, surfaced with the reason it was invisible</sub></td>
+    <td><img src="docs/screenshots/18-shared-shortlist.png" alt="Shared shortlist"><br><sub>A read-only link, opened with no session: no email, no phone, nothing that writes</sub></td>
+    <td><img src="docs/screenshots/19-trace-waterfall.png" alt="A trace"><br><sub>One panel request in Jaeger, with every query nested under it and timed</sub></td>
+  </tr>
+</table>
+
+<sub>Every screenshot is taken from the running stack by <a href="docs/capture.mjs"><code>docs/capture.mjs</code></a>. The evaluations are real model output. <a href="docs/ENGINEERING.md#what-it-looks-like">More of them →</a></sub>
+
+## Architecture
+
+```mermaid
+flowchart LR
+    Applicant(["Applicant"])
+    HR(["HR · hiring manager"])
+    Web["React panel<br/>+ public application page"]
+    API["FastAPI<br/>REST"]
+    Ingest["ingest/<br/>PyMuPDF · visible text only"]
+    Verify["ai/verify<br/>quote checking · weighted score"]
+    PG[("PostgreSQL 16<br/>queue · audit · tsvector")]
+    Worker["scheduler<br/>every 6 h · or 50 pending"]
+    OpenAI[("OpenAI Batch API<br/>one call per candidate")]
+    Obs["OpenTelemetry · Prometheus"]
+
+    Applicant -- "PDF" --> Web
+    HR --> Web
+    Web -- "same origin" --> API
+    API --> Ingest
+    Ingest -- "sanitized text" --> PG
+    PG -. "pending rows" .-> Worker
+    Worker --> OpenAI
+    OpenAI -- "strict JSON" --> Verify
+    Verify --> PG
+    API -. "traces · metrics" .-> Obs
+```
+
+**No RAG, no embeddings, no vector database.** Company context and the rubric are text HR writes
+when creating the opening, and they go in the prompt. Extracting, sanitizing, splitting and
+scoring is Python. The single AI call happens at the very end, and everything around it is
+deterministic — which is what makes the anti-injection design possible and the cost a third of a
+cent.
+
+<details>
+<summary><b>The four anti-injection layers, in one diagram</b></summary>
+
+```mermaid
+sequenceDiagram
+    participant C as Candidate's PDF
+    participant I as ingest/
+    participant M as gpt-5.6-luna
+    participant P as Python
+    participant HR as Panel
+
+    C->>I: "Ignore all previous instructions" in white on white
+    Note over I: layer 1 — every span checked for WCAG contrast,<br/>size, render mode, opacity, and occlusion
+    I->>M: visible text only, in its own user message
+    Note over M: layer 2 — a closed strict schema.<br/>"10/10, hire them" is not representable
+    M->>P: {criterion, 0–5, justification, quotes[]}
+    Note over P: layer 3 — Python applies the rubric weights.<br/>The model cannot emit the ranking number
+    Note over P: layer 4 — every quote must appear verbatim<br/>in the source, or the evaluation is flagged
+    P->>HR: score, criteria, quotes with character offsets
+```
+
+Measured on the golden set: the tampered résumé scores **48**, exactly what its clean twin
+scores. The attack bought nothing, and the reviewer is told it was attempted.
+</details>
+
+## Engineering highlights
+
+A few decisions that are probably worth a closer look than the rest.
+
+**The model is not allowed to rank anyone.** `EvaluationOutput` has no overall score field — by
+construction, not by convention. The model rates criteria 0–5 and Python computes
+`(score / 5) × weight`. A résumé that talks its way into a high criterion score still cannot
+rank itself, and because the total is a weighted sum, the gap between two candidates
+**decomposes exactly** — which is what lets the comparison screen say where a difference lives
+instead of merely that one exists.
+
+**Quote verification carries an offset map, and that map has been wrong.** Quotes are matched
+after collapsing whitespace, because extraction rebuilds line breaks from PDF geometry — but the
+offsets returned point into the *original* text, because that is what the panel highlights.
+Hypothesis found on its first run that `"İ".lower()` is two characters, so a position found in
+the lower-cased string ran off the end of a map built from the original: `IndexError` out of
+`verify()`, propagating from the batch collector and rolling back **an entire worker tick**. A
+Turkish name in a résumé was enough. The counterexample is kept as a named test.
+
+**The Batch API has two result files, and reading one loses every failure.** Successful rows land
+in `output_file_id`; failed and expired ones land in `error_file_id` carrying `response: null`.
+The collector read only the first, so a failure was dropped and the queue recorded the useless
+"missing from batch output" instead of what the API actually said. Found by writing the tests the
+audit called for — the module had been at 46% coverage, and the scheduler's own tests mocked it
+away entirely.
+
+**Money and secrets fail closed.** The background worker is off unless explicitly enabled, because
+a loop that starts by accident spends real money. `/metrics` answers 404 until a token is set.
+Sending email is unavailable rather than silently dropped when unconfigured. Secrets are
+`SecretStr`, after a pytest assertion printed a live API key into a terminal.
+
+**Throttling counts what succeeded, not what was attempted.** The public application endpoint
+takes no session and does real work per call — a 10 MB upload, an inline PyMuPDF pass, a queue
+row that becomes a paid model call. Limits are counted per accepted application, so a blocked
+caller cannot extend their own lockout by continuing to knock, and they are deliberately loose:
+a flood is obvious in the numbers, while a real candidate turned away is invisible.
+
+**One canonical log line per request, and its correlation id *is* the trace id.** A log line and
+its trace are the same thing seen from two sides. Handlers add facts with `note(...)` where those
+facts are known — the application id, never the candidate — so answering "what happened to that
+application?" is one search returning one line, instead of stitching an access log, a handler
+message and a stack trace together by timestamp.
+
+**The tests are graded.** Coverage says a line ran, not that anything would have noticed it
+behaving differently. Mutation testing changes the code on purpose and checks whether the suite
+goes red: 615 mutants, 614 killed. It found two real gaps in fully covered code — dropping
+`digest_size=8` changed nothing observable except the size of what is stored, eightfold; and
+`lower()` → `upper()` survived because folding both sides preserves equality, *except* that
+`"ß".upper()` is `"SS"`, so folding upward would make *Straße* and *Strasse* one document.
+
+<details>
+<summary><b>What it costs, measured</b></summary>
 
 | | |
 |---|---|
-| **The model never emits the number that ranks anyone.** | It scores criteria 0–5; Python applies the rubric weights. A résumé that talks its way into a high criterion score still cannot rank itself. |
-| **Every quote is verified before it is shown.** | Found in the résumé character for character, with the offsets you see beside it. A quote that is not there flags the evaluation for a human. |
-| **Nothing is filtered out automatically.** | Every application is read. Declining takes a person, a reason, and an audit entry. |
+| One résumé, batched | **$0.00031** |
+| 500 résumés (one opening) | **$0.16** |
+| A client at ~500/month | **≈ $10.31**, hosting included |
 
-Full design: [`docs/PLAN-MVP.md`](docs/PLAN-MVP.md). Working rules: [`CLAUDE.md`](CLAUDE.md).
-A one-page overview to send someone: [`docs/Verbatim.pdf`](docs/Verbatim.pdf).
+`gpt-5.6-luna` at `reasoning.effort: "low"`, chosen on a golden set rather than on tier:
+Spearman **+0.976** against the answer key versus **+0.927** for `gpt-5.4-mini`, at 26% of the
+cost and with zero unverified quotes in 66 runs. Every figure and two retracted claims are in
+[`docs/measurements.md`](docs/measurements.md).
+</details>
 
----
-
-## What it looks like
-
-Every screenshot below is taken from the running stack by
-[`docs/capture.mjs`](docs/capture.mjs) — nothing here is a mockup, and the evaluations are real
-model output, not seeded text.
-
-### The applicant
-
-The public page for an opening, and the form: four fields and a PDF. **Consent is unchecked by
-default and the send button stays dead without it.**
-
-<p align="center">
-  <img src="docs/screenshots/02-opening-mobile.png" width="300" alt="The opening on a phone">
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/03-application-form.png" width="470" alt="The application form">
-</p>
-
-An opening may ask a few yes/no questions. **Both answers look identical** — telling a candidate
-which one is wanted turns a question about a fact into a form to be filled in correctly — and
-answering "no" neither warns them nor blocks the form.
-
-![Screening questions, with no hint of which answer is wanted](docs/screenshots/04-screening-questions.png)
-
-An application cannot be unsent, so it is confirmed first. The receipt then says the thing the
-product is actually promising.
-
-<p align="center">
-  <img src="docs/screenshots/05-send-confirmation.png" width="440" alt="Send your application?">
-  &nbsp;&nbsp;
-  <img src="docs/screenshots/06-application-received.png" width="440" alt="Your application is in">
-</p>
-
-### The panel
-
-Candidates ranked by a score Python computed. The marks carry the whole state of a row at a
-glance: **concealed text**, missing must-haves, a decision already made.
-
-![The ranking](docs/screenshots/08-ranking.png)
-
-Note rows 04 and 05: the same résumé, one of them carrying a hidden instruction, **scoring
-identically at 48**. That is the anti-injection design working, reproduced live in the demo data
-rather than claimed.
-
-Search matches a surname, an address, or anything written inside a résumé. Wildcards are escaped
-and the query reaches Postgres as a bound parameter:
-
-<p align="center">
-  <img src="docs/screenshots/21-search.png" width="420" alt="Search by surname">
-</p>
-
-Reading one application, with the list out of the way:
-
-![One application, read with the list hidden](docs/screenshots/10-focused-reading.png)
-
-At the foot of every candidate: **who decided, why, and where the number came from.** The
-quotes are lit in the résumé itself, and the provenance line names the model, the prompt version
-and the rubric version — and says plainly that the score was computed, not written.
-
-![A decision, with its reason and the provenance of the score](docs/screenshots/22-decision.png)
-
-The document itself, rendered server-side as an image — never the PDF on the panel's own origin,
-because a stranger's PDF can carry script:
-
-![The résumé, rendered as an image](docs/screenshots/13-resume-document.png)
-
-When a résumé hides text from human readers, the concealed layer is raised and the passages are
-shown where they sat:
-
-![The concealed layer](docs/screenshots/11-concealed-layer.png)
-
-And when the same document arrives under two identities:
-
-![Seen before](docs/screenshots/12-seen-before.png)
-
-An applicant's own answers, shown to the reviewer with what the opening was asking for —
-**and a line saying that nothing was decided because of it**:
-
-![Stated by the applicant](docs/screenshots/16-stated-by-applicant.png)
-
-### Comparing two candidates
-
-The real question is not "is this one good" but "this one or that one". Because the overall score
-is a weighted sum, the gap decomposes exactly — so the screen names **where the difference lives**
-and what each row is worth:
-
-![Two candidates compared](docs/screenshots/14-compare.png)
-
-### Sharing a shortlist
-
-Whoever screens is rarely whoever decides. A read-only link, minted once and shown once:
-
-![The link, shown once](docs/screenshots/17-share-made.png)
-
-Opened with no session at all. Scores, criteria, quoted evidence and the résumé — and **no email,
-no phone, no LinkedIn, nobody who was declined, no control that writes anything**:
-
-<p align="center">
-  <img src="docs/screenshots/18-shared-shortlist.png" width="620" alt="The shared shortlist">
-</p>
-
-### The instruments
-
-Traces are exported over OTLP, so any backend works. The stack ships a viewer behind a compose
-profile — here is one request from the panel, with **every query nested under it and timed**:
-
-![A trace of one panel request](docs/screenshots/19-trace-waterfall.png)
-
-Twenty-one spans for one request: a session check, then one query per relation eagerly loaded — fifteen statements for thirteen candidates, and the same fifteen for two hundred. The count does not grow with the number of candidates, which is the property the N+1 test asserts and this is what it looks like.
-
-![The traffic, in the trace search](docs/screenshots/20-trace-search.png)
-
----
-
-## Requirements
-
-- Python 3.14
-- [uv](https://docs.astral.sh/uv/)
-- Docker (for Postgres)
-- Node 20+ (only for the commit hooks)
-
-## Running the whole thing
+## Running it
 
 ```bash
-cp .env.example .env            # then fill in OPENAI_API_KEY
+cp .env.example .env          # then fill in OPENAI_API_KEY
 docker compose up -d --build
+
+cd api
+printf 'pw\npw\n' | .venv/bin/python -m app.cli create-user you@company.com "Your Name"
+.venv/bin/python scripts/seed_demo.py     # ten candidates through the real public endpoint
 ```
 
 | | |
 |---|---|
 | Public site | http://localhost:5173 |
-| Application page | http://localhost:5173/apply/{slug} |
-| Panel | http://localhost:5173/panel |
+| Application page | http://localhost:5173/apply/data-analyst-demo |
+| Panel | http://localhost:5173/panel · `demo@acme.com` / `correct-horse-battery` |
 | API docs | http://localhost:8000/docs |
 
-### Where the panel lives
-
-The panel's URL segment is set per deployment with `VITE_PANEL_PATH` (and `PANEL_PATH` on the
-API), it is never linked from the public site, and `robots.txt` disallows it.
-
-**That is hygiene, not a security control, and it must not be treated as one.** A URL leaks
-through browser history, `Referer` headers, bookmarks and any chat someone pastes it into. What
-protects the panel is the sign-in: Argon2, a server-side session, an `HttpOnly` cookie and a
-lockout. Changing the path keeps the admin surface out of sight and out of search results;
-it stops nobody who is actually looking.
-
-The application page is deliberately **not** obscured. That link gets posted on LinkedIn: it has
-to be clean and readable, because a candidate who sees a scrambled URL assumes phishing.
-
-nginx serves the panel and proxies `/api` and `/openings` to the API, so the browser sees a
-single origin: no CORS, and the session cookie never crosses an origin boundary. It is also
-where the security headers are set — the Content-Security-Policy included, so that
-`connect-src 'self'` is true rather than aspirational.
-
-![The public site](docs/screenshots/01-landing.png)
-
-**Compose reads the repository's `.env` automatically**, so `OPENAI_API_KEY` reaches the
-containers without being written into `docker-compose.yml`. Override one for a single run with
-`METRICS_TOKEN=... docker compose up -d`. Every setting is listed and explained in
-[`.env.example`](.env.example).
-
-### Something to look at
-
-```bash
-# A user to sign in with
-docker compose exec api python -m app.cli create-user demo@acme.com "Ana Ruiz"
-
-# Ten candidates, uploaded through the real public endpoint and evaluated
-cd api && .venv/bin/python scripts/seed_demo.py
-```
-
-The seed uploads the ten golden-set résumés and evaluates them — about a cent. It includes the
-tampered copy, which is the interesting row: **it scores identically to its clean twin**,
-because the hidden text was stripped before anything was evaluated.
-
-#### Walk the applicant's path
-
-The seed publishes one opening. Its public page is:
-
-**http://localhost:5173/apply/data-analyst-demo**
-
-This is the hiring company's page, not Verbatim's: Mercadis leads, and Verbatim signs once at
-the foot. The opening is written the way a company writes one — what the team does, what the
-role owns, what they are looking for, and how they hire.
-
-The applicant never sees the rubric and never learns a score. Sending requires the consent box,
-which starts unchecked — GDPR art. 22, not a UI flourish — and then asks for confirmation,
-because an application cannot be unsent and a candidate gets one. The page that follows says
-the application is in, that a person will read it, that nothing is filtered out automatically,
-and that they can close the tab.
-
-Apply with any PDF, then open the panel. Your application appears **at the top of the list**,
-marked *awaiting examination* and with no score: extraction is deterministic and runs on upload,
-so the résumé, its text and its integrity flags are there immediately, while the score waits for
-the next batch. **Examine now** on the candidate's page runs that one synchronously instead —
-seconds, and about $0.0006.
-
-To see the part that shows the product best, upload the tampered file the golden set already
-carries:
-
-```
-api/tests/golden/pdfs/ibarra_injected.pdf
-```
-
-It arrives flagged **concealed text**, and its page shows what the eye cannot see — the hidden
-instruction, its reason, its contrast ratio against the background and its page number — beside
-a score computed from the visible text alone.
-
-#### Local demo credentials
-
-| | |
-|---|---|
-| Email | `demo@acme.com` |
-| Password | `correct-horse-battery` |
-
-**These are for the local compose stack and nothing else.** They are written here because the
-stack is worthless to look at without a way in, and they open a database of invented candidates
-on `localhost`. A deployment creates its own account with `app.cli create-user` and a real
-password; nothing in this repository ships a default login.
-
-## Local development
-
-```bash
-docker compose up -d db         # just the database
-cd api
-uv venv --python 3.14
-uv pip install -e ".[dev]"
-uv run alembic upgrade head
-.venv/bin/uvicorn app.main:app --reload
-
-cd ../web && npm install && npm run dev
-```
-
-### Commit hooks
-
-```bash
-npm install                     # at the repository root
-```
-
-Two hooks, installed by husky. Neither ever rewrites what you wrote: an auto-fix would leave
-changes unstaged and silently outside the commit you thought you were making.
-
-| Hook | What it runs |
-|---|---|
-| `pre-commit` | `ruff check`, `ruff format --check` and `mypy` over `api/`, only when a Python file under `api/` is staged. Always through `api/.venv/bin/*`, never the PATH — otherwise the hook validates with whatever version the machine happens to have |
-| `commit-msg` | `commitlint`, over the rules below |
-
-`pytest` is deliberately not in a hook: the full suite takes about a minute, and a hook that slow
-gets bypassed. CI runs it on every push.
-
-## Commit convention
-
-[Conventional Commits](https://www.conventionalcommits.org), enforced by commitlint in
-`commit-msg` and again in CI on every pull request.
-
-```
-<type>(<scope>): <description in the imperative, lower case, no trailing period>
-```
-
-**Title only.** No body, no footers, no `Co-Authored-By`, no trailing links — `body-empty` and
-`footer-empty` are errors, and the header is capped at 72 characters. Anything that needs
-explaining belongs in the code or in `docs/`, where it stays next to what it explains instead of
-in a message nobody greps.
-
-| | |
-|---|---|
-| **Types** | `feat` · `fix` · `refactor` · `test` · `docs` · `chore` · `build` · `ci` · `perf` · `style` |
-| **Scopes** | `api` · `db` · `ingest` · `ai` · `web` · `auth` · `infra` · `docs` |
-
-```
-feat(ingest): detect hidden text in pdfs with pymupdf
-fix(ai): read the batch error file so failures keep their reason
-feat(api): rate limit the public application endpoint
-chore(infra): add husky and commitlint
-```
-
-Never `--no-verify`. If a hook gets in the way, fix the hook.
-
-## Authentication
-
-Email and password, with a server-side session in an `HttpOnly` cookie.
-
-<p align="center">
-  <img src="docs/screenshots/07-sign-in.png" width="420" alt="Sign in">
-</p>
-
-```bash
-cd api
-.venv/bin/python -m app.cli create-user you@company.com "Your Name"
-```
-
-### The choices, and why
-
-| Decision | Reason |
-|---|---|
-| **Argon2id**, explicit parameters | Memory-hard: a leaked hash costs an attacker RAM per guess, not just cycles. Parameters are pinned so a library default cannot silently weaken every stored password |
-| **Server-side sessions**, not a self-contained token | Revocable. Logging out, disabling an account or a suspected theft take effect on the next request instead of waiting for an expiry |
-| **Only the token's hash is stored** | A dump of the sessions table hands nobody a working session |
-| **`HttpOnly` cookie**, not `localStorage` | No script on the page can read it. An XSS can act while the page is open but cannot steal a credential to use later from elsewhere |
-| **`SameSite=Strict`** | Another origin cannot make the browser act as this user, which removes the CSRF class here |
-| **`Secure`** unless `COOKIE_SECURE=false` | Off only for local http |
-| **A new token on every sign-in** | Session fixation: a value planted beforehand never becomes the authenticated one |
-| **Idle and absolute deadlines** (8 h / 24 h) | A session ends at whichever comes first |
-| **Identical answer for unknown email and wrong password** | Different answers turn the login form into an account directory |
-| **A dummy hash when no user matches** | Otherwise the response time answers "does this email exist?" |
-| **5 failures per email, 20 per address, 15-minute window** | The lockout holds even once the password is right, so guessing on the last attempt buys nothing |
-| **8-character minimum, no composition rules** | NIST SP 800-63B. Forced rules produce `Password1!` |
-| **Sign-in and sign-out to `AuditLog`** | — |
-
-The public opening page (`GET /openings/{slug}`) needs no session and never exposes
-`company_context` or the rubric — publishing the scoring criteria would tell candidates
-exactly what to write.
-
-## Applying
-
-`POST /openings/{slug}/apply` is public — the slug is the invitation. It takes a multipart form
-with `full_name`, `email`, `consent`, an optional `phone` and `linkedin_url`, and a `resume`
-PDF.
-
-Uploads are validated **while streaming**, not after: the first bytes must match the `%PDF-`
-magic number (the `Content-Type` header is supplied by the uploader, so a renamed executable
-passes it), and the read aborts past `MAX_UPLOAD_BYTES`. Accepting the whole body first would
-mean a 2 GB upload has already filled the disk by the time it is rejected.
-
-Files land in `{UPLOADS_DIR}/{application_id}/{random}.pdf`. The filename is random rather than
-derived from the candidate's name, so the path cannot be guessed even by someone who knows the
-application id.
-
-There is **no rate limiting** on this endpoint yet. Cloudflare goes in front of the API at
-deployment (Phase 11).
-
-## Extraction and sanitization
-
-Runs inline on upload — deterministic, free, and fast, so the panel shows the résumé, its text
-and any tampering flags from the moment it arrives. **No model is involved.**
-
-A span of text is treated as hidden from a human when any of these holds:
-
-| Rule | Signal |
-|---|---|
-| `invisible_render_mode` | PDF text render mode 3 draws nothing |
-| `transparent` | opacity below 0.05 |
-| `too_small` | font under 4pt |
-| `low_contrast` | WCAG contrast under 1.5:1 against the background **under that span** |
-| `off_page` | more than half the box lies outside the page |
-| `covered` | an opaque shape painted after it, completely over it |
-
-Only `visible_text` is ever sent to the model. `total_text` keeps everything, and the delta is
-the evidence shown to HR. Backgrounds are resolved per span, not per page, so dark-on-dark text
-inside a navy sidebar is caught while the legible white text beside it is not.
-
-Deterministic injection patterns **flag, they never reject** — a false positive removes a real
-person from a hiring process.
-
-### OCR
-
-Scanned résumés have no text layer, so **none of the rules above can protect them**. They are
-flagged `ocr_no_hidden_text_detection` and marked for manual review rather than quietly
-evaluated as though they had been checked.
-
-OCR needs the Tesseract binary. Without it the file is still accepted and still flagged — the
-pipeline degrades, it does not break.
-
-```bash
-sudo apt install tesseract-ocr tesseract-ocr-spa
-```
-
-## Closing an opening and writing to candidates
-
-Close the opening, draft, read, send. Four steps, and the last one is a person.
-
-```
-POST /api/v1/openings/{id}/close        the opening stops accepting applications
-POST /api/v1/openings/{id}/outreach     drafts one email per decided candidate
-PATCH /api/v1/outreach/{id}             rewrite it
-POST /api/v1/outreach/{id}/send         the only call that sends anything
-```
-
-**Drafting requires the opening to be closed.** Drafting mid-round invites declining someone the
-round would have reconsidered.
-
-**The emails come from templates**, versioned in `app/outreach/templates/` beside the evaluator's
-prompts, with merge fields filled by Python. **Not written by a model** — and not for cost, since
-one call per shortlisted candidate is five or ten per opening. A generated email invents, and
-"we were impressed by your work on X" is exactly the sentence a model produces and exactly the
-sentence that is wrong when X is not in the résumé. It goes out over the client's name to
-somebody who did not get the job.
-
-The decline says the decision was made by a person and that the résumé is deleted in six months
-unless they ask sooner. That is the product's position and what keeps it out of GDPR art. 22.
-
-**Sending takes a name and records it**, along with the template version, in `AuditLog`. The
-audit entry carries no recipient address and no body: it records that a person approved a send,
-not the contents of somebody's rejection. A sent message can no longer be edited, and sending
-twice is refused.
-
-With `RESEND_API_KEY` unset, sending answers **503** rather than accepting the approval and
-dropping the message. A product that silently swallows rejection emails is worse than one that
-cannot send them.
-
-## Observability
-
-Until this went in, a batch that stalled overnight left no trace anywhere: twelve `logger` calls
-across eight of seventy-five modules, no request context, no metrics, no traces. The first thing
-the new readiness probe reported on the local stack was a real backlog nobody had noticed —
-21 rows pending, the oldest 24 hours old.
-
-**Correlation.** Every response carries `X-Correlation-Id`, and it is the OpenTelemetry **trace
-id**, not a second identifier — a log line and its trace are the same thing seen from two sides.
-Requests that are not traced (`/health`, `/ready`, `/metrics` are excluded, or a platform poll
-would bury real traffic) fall back to a random id, which still gathers one request's lines.
-
-**Canonical logs.** One wide line per request rather than a scatter of narrow ones:
-
-```json
-{"ts":"2026-08-29T03:23:58+0000","level":"INFO","logger":"app.request","message":"request",
- "correlation_id":"22d827687b36e86beba3e0df20897f87","method":"POST",
- "route":"/openings/{slug}/apply","status":201,"duration_ms":412.3,
- "application_id":"01a04b28-a41c-7567-86c5-ff7982b43b64","opening":"data-analyst-demo"}
-```
-
-Handlers add to it with `observability.note(...)`, so a fact is recorded where it is known
-rather than plumbed through return values. Answering "what happened to that application?" becomes
-one search returning one line, instead of stitching an access log, a handler message and a stack
-trace together by timestamp. Uvicorn's own access log is **silenced** rather than reformatted: it
-carries strictly less and would double every request in the store.
-
-Identifiers only — `application_id`, never the candidate. A test renders the line and asserts the
-applicant's name and address are absent.
-
-**Logs.** `LOG_JSON=true` gives one JSON object per line. Uvicorn's own loggers are taken over
-explicitly: it sets `propagate = False`, so replacing the root handler leaves the server's output
-— most of what a deployment prints — untouched. That was true here until it was checked against
-a running container rather than a unit test.
-
-**Traces.** Recorded always, exported only when `OTEL_ENDPOINT` is set. An unconfigured
-deployment pays for building a span and nothing else, so the $10/month box stays a $10/month box
-and no collector is required to run the thing.
-
-OpenTelemetry has no interface of its own — it is the SDK and the wire protocol, and something
-else has to receive and draw what it sends. The stack ships one behind a compose profile, so the
-ordinary `docker compose up` stays three containers:
+Traces need a viewer, and one ships behind a compose profile:
 
 ```bash
 OTEL_ENDPOINT=http://jaeger:4318/v1/traces docker compose --profile tracing up -d
 # then http://localhost:16686
 ```
 
-Because the export is plain OTLP over HTTP, any backend works by changing that one variable and
-nothing else — Grafana Cloud and Honeycomb both take it on their free tiers. That portability is
-the reason for using OpenTelemetry rather than a vendor SDK.
-
-What a trace actually shows, taken from the running stack — the panel's ranked list, with every
-query nested under the request and timed:
-
-```
-GET /api/v1/openings/{opening_id}/applications            56.80 ms   20 spans
-│  connect                                                 0.45 ms
-│  SELECT screening  ×13                            0.68 – 2.41 ms each
-```
-
-Thirteen queries for twenty-five candidates, and the count does not move with the number of
-candidates. The same fact the N+1 test asserts, in a form you can point at.
-
-**Metrics.** `GET /metrics`, Prometheus exposition:
-
-```
-verbatim_requests_total{method,route,status}      verbatim_queue_depth{state}
-verbatim_request_seconds{method,route}            verbatim_queue_oldest_pending_seconds
-verbatim_evaluations_total{outcome}               verbatim_batches_total{outcome}
-verbatim_tokens_total{direction}
-```
-
-The label is the route **template**. `/applications/{application_id}` as a path would mint one
-metric series per candidate and publish their ids at the same time; a test asserts the slug of a
-real opening never appears in the output.
-
-It answers **404 until `METRICS_TOKEN` is set**, then requires `Authorization: Bearer <token>`,
-compared with `hmac.compare_digest`. Queue depth and spend tell an operator what is happening and
-tell an attacker when nobody is looking, so this fails closed like the worker does.
-
-**Readiness.** `/ready` reports the database, the queue (depth by state, and the age of the
-oldest waiting row — depth alone looks identical whether work is flowing or frozen), whether the
-uploads directory is writable, and whether the model key is configured. It never calls OpenAI: a
-probe that spent money every time a platform polled it would be its own incident.
-
-**Only the database returns 503.** A stalled queue or a missing key comes back `degraded` at 200.
-An instance with a frozen batch still serves every page in the panel, and pulling it out of
-rotation would turn a background problem into an outage.
-
-## Throttling the public endpoints
-
-`POST /openings/{slug}/apply` takes no session — the slug is the invitation — and does real work
-for every call: a file of up to 10 MB on disk, an inline PyMuPDF pass, and a queue row that
-becomes a paid model call. Sign-in has been rate limited since the beginning. This was not.
-
-```
-sign-in   5 per email · 20 per IP · 15 min      (failures)
-apply     5 per email · 20 per IP · 1 h         (accepted applications)
-```
-
-**Counted per accepted application, not per attempt.** Counting refusals would let a blocked
-caller keep their own lockout alive by continuing to knock; a test asserts a refusal adds
-nothing.
-
-The check runs before anything is written. By then the upload has already crossed the wire into
-a spooled temp file, so the bandwidth is spent either way — what the refusal saves is the disk
-write, the extraction and the model call, which is where the cost is.
-
-The limits are **deliberately loose**, and the reason is asymmetry: a flood is obvious in the
-numbers, while a real candidate turned away is invisible — they simply do not apply. A shared
-office or a careers fair leaves through one address, so the per-IP number sits far above what one
-person could need, and the per-email limit is what actually stops a flood.
-
-The address is stored as given; the email only as a SHA-256. Both are compared for equality
-alone, but an email identifies a person who is not our user, while an operator investigating a
-flood needs to see the address. Both tables are swept two days after their window closes —
-including `login_attempts`, which had no sweep of its own and had been growing without bound.
-
-## Screening questions
-
-An opening can ask up to five yes/no questions — right to work, visa sponsorship, a licence.
-They are **facts the applicant states**, and the plan rules out a pre-filter that rejects
-candidates (§7 "Out"), so an answer decides nothing on its own.
-
-Concretely, someone whose answer is not the one the opening wanted still gets an application,
-still gets evaluated by the model, still appears in the ranking, and still has to be declined by
-a person with a reason. The unmet answer is a line on their page.
-
-`expected_answer` is stored on the question and **never leaves the panel**. The public form
-shows the text and two identical buttons: telling a candidate which answer is wanted turns a
-question about a fact into a form to be filled in correctly. Answering "no" does not warn them,
-disable the form, or change what they are told — a test asserts the field is absent from the
-whole public payload.
-
-Answers arrive as JSON in a form field, since the questions are per-opening and the browser
-cannot name the fields in advance. A partial set is refused rather than stored: a gap reads on
-the panel exactly like a "no", which would put words in the applicant's mouth.
-
-In the panel the row is **marked, never hidden**: it keeps its rank and its score, carries a
-`said no to N requirements` label, and a **Said no** filter isolates those rows on demand.
-
-<p align="center">
-  <img src="docs/screenshots/15-said-no-list.png" width="420" alt="A row marked, not hidden">
-</p> The
-mark is deliberately distinct from `missing must-haves`, which is the model reading the résumé —
-this one is the applicant's own answer. Screening answers are **excluded from a shared
-shortlist**: visa status and right to work are not for a link sent outside the company.
-
-## Mutation testing
-
-Coverage says a line ran. It does not say a test would have *noticed* had the line behaved
-differently — a line can be covered by a test that passes either way. Mutation testing answers
-that by changing the code on purpose and checking whether the suite goes red.
-
-```bash
-cd api
-.venv/bin/mutmut run          # a few minutes
-.venv/bin/mutmut results
-```
-
-Scoped to the pure logic where a survivor is unambiguously a gap: verification, scoring,
-duplicate detection, throttling, screening. Mutating an endpoint mostly produces mutants killed
-by the framework, which tells you nothing and costs the same. It is slow by nature and stays a
-manual tool — CI runs the coverage floor instead.
-
-```
-615 mutants · 614 killed · 1 survivor
-```
-
-**It found two real gaps in the duplicate estimator**, both invisible to coverage because the
-code was fully covered:
-
-- Dropping `digest_size=8` leaves blake2b's default 64-byte digest. Every property still held —
-  self-similarity, symmetry, the Jaccard estimate — because the comparison only cares about
-  ordering. What changed was the size of what is stored: eight bytes per hash becomes sixty-four,
-  and "1 KB a résumé" becomes eight. Now pinned.
-- `lower()` → `upper()` survived, because a fold applied to both sides preserves equality —
-  except where the directions disagree on length. `"ß".upper()` is `"SS"`, so folding upward
-  would make *Straße* and *Strasse* one document. Which way that goes was a product decision
-  nothing recorded; it is now a named test.
-
-The remaining survivor replaces the whitespace substitution token. It is applied identically to
-both sides of every comparison, so it cannot change any answer the module gives, and a test that
-killed it would be testing the implementation rather than the behaviour. **Chasing 100% past this
-point produces tests that make the number go up and the suite worse**, so the run stops here and
-says so.
-
-## End-to-end journeys
-
-2,698 lines of front end had no test of any kind: CI ran `tsc --noEmit` and a production build,
-both of which pass while the panel renders nothing. Every interface check in this project used to
-be someone driving a browser by hand and reading the output.
-
-```bash
-docker compose up -d && (cd api && .venv/bin/python scripts/seed_demo.py)
-cd web && npm run e2e          # or npm run e2e:ui to watch it
-```
-
-Thirteen journeys over the four paths where a silent break shows up nowhere else: applying,
-signing in and reading the ranking, comparing two candidates, and opening a shared link with no
-session at all. They run against the **real stack** — a mocked back end would only prove the
-front end agrees with the mock.
-
-They assert the promises, not just the plumbing: that consent starts unchecked and the send button
-stays disabled without it; that the confirmation screen says *none is filtered out
-automatically*; that every finding cites a sentence **and the character offsets it sits at**;
-that hovering a finding lights that quote in the résumé; that a shared link opens in a browser
-context with no cookies and shows no email address and no way to act.
-
-Three things the suite learned the hard way, all written down beside the tests:
-
-- **Sign-in failures are counted per email and per address.** A test that always fails as
-  `nobody@example.com` locks that address out and starts asserting the lockout message instead,
-  and the throttling test spent an IP allowance every later sign-in needed. Each now uses an
-  address of its own.
-- **The seeded opening is selected by id from the API**, because a development database
-  accumulates openings whose titles repeat.
-- **And waiting for "a row" is not waiting for the right rows.** The panel opens on whichever
-  opening comes first; that one already has rows, so the wait passed instantly and a click landed
-  on the previous opening's candidate. The fixture now waits for a name that belongs to the
-  opening it just selected.
-
-## Property-based tests
-
-The example tests elsewhere pin behaviour on résumés we chose. These state what must hold for
-*any* input and let Hypothesis go looking for the counterexample, which matters here because the
-inputs are strangers' PDFs.
-
-Four things are stated as properties: quote verification (layer 4 of the anti-injection design
-rests on it), the weighted score (the number the model is forbidden to emit), the duplicate
-estimator (a sampling approximation, and those are exactly the things that hold on the examples
-you tried), and the normalisation everything above is built on.
-
-**It found a crash on the first run.** `"İ".lower()` — the Turkish dotted capital I — is *two*
-characters, an `i` and a combining dot. `find_quote` searched a lower-cased string and then
-indexed an offset map built from the original, so the position ran off the end:
-
-```
-find_quote('01', '000İ01')  →  IndexError: list index out of range
-```
-
-`verify()` is called from `persist_evaluation`, which runs inside the batch collector with no
-guard around it, so the exception would propagate to the worker tick and roll back **the whole
-tick** rather than one row. A résumé from an İbrahim or an İstanbul was enough. Case folding now
-carries its own offset map, and the counterexample is kept as a named test beside the property.
-
-## Recognising a résumé already seen
-
-Reapplying to the same opening is refused at the door, and reusing your own CV for a second
-opening is ordinary. The arrangement no reviewer can spot alone is **one document submitted
-under two identities**.
-
-```
-GET /api/v1/applications/{id}/duplicates
-```
-
-Two fingerprints are taken at ingest, both from the *visible* text — matching on hidden text
-would let a document be disguised from this check by the very trick the ingest layer exists to
-catch. In the demo data the injected CV comes out identical to its clean twin, which is the
-point.
-
-- `text_digest` — SHA-256 of the normalised text. Lowercasing and dropping punctuation means a
-  re-export from another editor is not a disguise.
-- `sketch` — the 128 smallest hashes of the document's five-word shingles. Because the hash is
-  uniform, those are a uniform sample of the document, and two samples overlap in proportion to
-  how much the documents do. A set comparison becomes 128 integers per résumé, no extension
-  required. Below the cap the sketch is the whole set, so the overlap is counted exactly rather
-  than sampled.
-
-A document under about forty words is not compared at all: with a handful of shingles any
-overlap looks total, and silence beats a guess. Matching is scoped to the company — a match
-across tenants would reveal that another client holds the same candidate.
-
-**Nothing here scores, ranks or rejects anybody.** The panel reports what was measured and says
-plainly that plagiarism, a shared template and an agency applying on someone's behalf all look
-identical from here. Résumés ingested before this existed carry no fingerprint;
-`python -m app.cli backfill-fingerprints` gives them one.
-
-## Comparing candidates
-
-A score answers "is this one any good". The decision is "this one or that one", and two totals
-side by side answer that no better than one does.
-
-```
-GET /api/v1/openings/{id}/compare?ids=<a>&ids=<b>[&ids=<c>]
-```
-
-Because the overall score is a weighted sum, **the gap decomposes exactly**: each criterion
-contributes `(score / 5) × weight`, so the per-criterion differences add up to the difference in
-the totals, and the screen can say how many points of the gap each row is worth. A test asserts
-that identity rather than trusting it.
-
-The headline sentence names the smallest set of criteria carrying more than half the gap — one
-when one criterion really is the story, more when the difference is genuinely spread out.
-Naming a fixed two would be a claim the numbers do not support.
-
-Three columns is the maximum. Only examined candidates can be compared: inventing zeros for one
-still in the queue would read as a judgement nobody made. Candidates from different openings are
-refused too — different rubrics, different weights, so the rows would not mean the same thing.
-
-## Sharing a shortlist
-
-Whoever screens is rarely whoever decides. Without a way to show a hiring manager the shortlist,
-the only option is handing them a password.
-
-```
-POST   /api/v1/openings/{id}/share   mint a link; the token is returned once
-GET    /api/v1/openings/{id}/share   list the links and their view counts
-DELETE /api/v1/share/{id}            revoke one immediately
-GET    /api/v1/shared/{token}        the read-only view — no session
-```
-
-**Here the token is the credential**, unlike the panel's path. So it is 256 bits of randomness,
-only its SHA-256 is stored, it expires (14 days by default, 90 maximum), and it can be revoked.
-A dump of `share_links` grants nobody a view.
-
-What the link shows: shortlisted candidates, their scores, the criteria and the quoted evidence,
-and the résumé. What it never shows: **email, phone, LinkedIn, everyone who was declined, the
-reviewer's reason, and the audit trail.** There is no control on that page that writes anything.
-
-An unknown token and an expired one answer identically — distinguishing them would tell a
-guesser they had found something real. Views are counted; readers are not identified, because
-knowing a link was opened is useful and knowing who opened it is surveillance nobody asked for.
-Every response carries `X-Robots-Tag: noindex`.
-
-## Retention, access and erasure
-
-The application page tells a candidate their résumé is deleted six months after the opening
-closes and that they can ask for it sooner. These are the endpoints that make those true.
-
-```
-POST /api/v1/retention/sweep            delete what is past the window
-GET  /api/v1/data-subject/{email}       everything held about one person
-POST /api/v1/data-subject/erase         delete it
-GET  /api/v1/openings/{id}/export.csv   the opening's results
-GET  /api/v1/audit                      who did what
-```
-
-**Retention also runs on the worker's tick**, not only when someone calls the endpoint. A
-promise on a public page cannot depend on a person remembering to press a button.
-
-The window is measured **from the opening closing**, not from the application arriving: someone
-who applied on day one and someone who applied on the last day belong to the same round and are
-kept for the same period.
-
-**Files are deleted before rows.** A row without its file is a recoverable inconsistency; a file
-without its row is personal data nobody can find, list or delete.
-
-**Erasure keeps the audit trail, anonymised.** The actor becomes `erased` and the entry is
-marked, but the record survives — deleting it would erase the proof that a human made each
-decision, which is the record the same regulation requires. The erasure entry itself carries no
-email: writing down who asked to be forgotten would defeat the exercise.
-
-**The CSV neutralises formulas.** A candidate chooses their own name, a name can start with `=`,
-and Excel and Sheets will run it. Cells beginning with `=`, `+`, `-` or `@` are prefixed with a
-quote.
-
-## Cost
-
-Everything below is measured, not estimated. Reproduce with the scripts in `api/scripts/`;
-raw output in `api/tests/fixtures/`.
-
-### Every model and effort we tried
-
-Same two résumés, same two-criterion rubric, ~1,050 input tokens each.
-
-| Model | Effort | Output tokens | of which reasoning | $ / résumé | Clean CV scores |
-|---|---|---|---|---|---|
-| gpt-5.4-mini | `none` | 200 | 0 | $0.00168 | Python 4, Postgres 3 |
-| gpt-5.4-mini | `low` **(ours)** | 334 | 60 | $0.00229 | Python 4, Postgres 3 |
-| gpt-5.4-mini | `medium` (default) | 737 | 516 | $0.00410 | Python 5, Postgres 3 |
-| gpt-5.6-luna | `none` | 281 | 0 | $0.00055 | Python 5, Postgres 3 |
-| gpt-5.6-luna | `low` | 324 | 68 | $0.00060 | Python 5, Postgres 3 |
-| gpt-5.6-luna | `medium` | 388 / 400 / 519 | 133 / 130 / 253 | $0.00068–0.00083 | 4,3 · 4,3 · 4,2 |
-
-`minimal` is rejected on both models with a 400. Supported: `none`, `low`, `medium`, `high`,
-`xhigh`. Batch is 50 % off input and output; reasoning tokens bill as output, so they are
-discounted too.
-
-**Total spent on measurement: about $0.20.**
-
-### A correction
-
-An earlier version of this file claimed the default `medium` effort cost "roughly 20×" `low`.
-**That was wrong.** It came from dividing an observed $0.15 spend by three calls, never from a
-measurement. Measured directly, `gpt-5.4-mini` at `medium` costs **1.79×** `low` — real, but
-nothing like 20×. The $0.15 is not accounted for by these numbers and remains unexplained; the
-per-request breakdown in the OpenAI dashboard would settle it.
-
-Pinning `reasoning.effort` is still right — being explicit about a parameter that silently
-changes cost is worth doing, and 1.79× is worth having — but it is not the emergency the earlier
-note described.
-
-### What reasoning effort actually does
-
-It does not change the price per token; it changes how many output tokens get burned. Reasoning
-tokens never appear in the response and are **billed as output**, which is what makes the cost
-move without anything visible changing.
-
-The size of that effect is per model, and the difference is large: at `medium`, `gpt-5.4-mini`
-spent 516 reasoning tokens while `gpt-5.6-luna` spent 130–253 for the same work. "Medium" is not
-a comparable setting across models.
-
-### The model decision — decided by measurement, not by tier
-
-**We use `gpt-5.6-luna` at `reasoning.effort: "low"`.** Changed from `gpt-5.4-mini` on
-2026-08-27.
-
-`gpt-5.6-luna` — 1,050,000 token context, 128,000 max output, knowledge cutoff 2026-02-16,
-efforts `none` through `max`.
-
-**Luna is OpenAI's volume tier — the nano-equivalent of this generation.** An earlier version of
-this file said it sat "in the flagship family rather than the mini line" and called the switch a
-move up in capability. That was wrong: OpenAI's own model page puts Luna at the nano tier and
-its guidance is "use Luna for volume, not for depth". The decision was not made on tier and does
-not depend on it.
-
-#### What it was decided on
-
-Ten synthetic data-analyst candidates across ten résumé layouts, three runs each per model:
-
-| Metric | `gpt-5.6-luna` | `gpt-5.4-mini` |
-|---|---|---|
-| Spearman ρ against the answer key | **+0.976** | +0.927 |
-| Mean standard deviation across runs | **2.07** | 2.23 |
-| Unverified quotes, 33 runs each | 0 | 0 |
-| Bottom two candidates separated correctly | **yes** | no |
-| Cost per résumé | **$0.00087** | $0.00335 |
-
-`mini` ranked the accountant with no SQL — who fails the mandatory criterion — *below* a graduate
-with no experience at all, and scored them within 0.3 points of each other. Luna put them at 2.7
-and 1.3. That is the behaviour the product needs.
-
-#### Where luna sits against the rest of its family
-
-| Benchmark | sol | terra | **luna** |
-|---|---|---|---|
-| Intelligence Index (max effort) | 59 | 55 | **51** |
-| Agents' Last Exam | 53.6 | 50.4 | **50.3** |
-| Terminal-Bench 2.1 | 88.8 % | 87.4 % | **84.7 %** |
-| Coding Agent Index | 80 | 77.4 | **74.6** |
-| SWE-bench Pro | 64.6 % | 63.4 % | **62.7 %** |
-| GPQA Diamond | > 92 % | > 92 % | **> 92 %** |
-| **MRCR long-context recall** | 91.5 % | 89.6 % | **41.3 %** |
-| Cost per task | $1.04 | $0.55 | **$0.21** |
-
-Luna is within a few points of the tier above it on almost everything. **None of those benchmarks
-measure this task**, though — they are agentic, coding and science-QA evaluations. They are
-context, not evidence. The golden set above is the evidence.
-
-#### The one benchmark that matters to this architecture
-
-**MRCR is 41.3 % against terra's 89.6 %.** It measures recall from a long input, and it is the
-only place luna falls off a cliff.
-
-It does not bite today: prompts are around 1,000 tokens. But this design deliberately has **no
-retrieval** — the company context goes in the prompt (plan §4), which makes prompt size the
-dimension that grows as a client accumulates context. We have chosen the model weakest at exactly
-that.
-
-The tripwire is written down in plan §5.1.4: **if the assembled prompt passes 15,000 tokens,
-re-run `scripts/compare_models.py` against `gpt-5.6-terra` before shipping it.** At terra's price
-the evaluation would cost about $0.005 per résumé — still under three cents for a hundred
-candidates, so this is a quality decision, not a budget one.
-
-#### Still unproven
-
-The golden set's answer key is constructed, not observed. It measures agreement with a ranking
-the author invented. Phase 6 repeats the same experiment against real résumés with a human
-ordering, and that run is the one that decides.
-
-### What the Batch API needs that the synchronous path does not
-
-Batch is not "the same request with a flag". Four differences, all of which Phase 7 must handle:
-
-1. **No `text_format`.** `client.responses.parse(text_format=Model)` does not exist on the batch
-   path. The request body carries a raw JSON Schema under `text.format`.
-2. **The Pydantic schema has to be hardened.** `model_json_schema()` omits
-   `additionalProperties: false`, and strict mode refuses a schema without it:
-   *"In context=(), 'additionalProperties' is required to be supplied and to be false"*.
-   `app/ai/batch_schema.py` adds it to every object, root and `$defs` alike, and makes every
-   property required. Without that the batch path silently loses layer 2 of the anti-injection
-   design — in exactly the place production runs.
-
-   An earlier version of this file said `$defs`/`$ref` had to be flattened away. **That was
-   wrong**: strict mode accepts them, verified against the API. The real gap was much smaller.
-3. **A different call sequence.** Build JSONL of `{custom_id, method, url, body}` →
-   `files.create(purpose="batch")` → `batches.create(endpoint="/v1/responses")` → poll →
-   `files.content(output_file_id)`. Results come back **in any order**; key them by `custom_id`,
-   never by position.
-
-   And there are **two result files, not one.** Successful rows land in `output_file_id`;
-   failed and expired ones land in `error_file_id` and carry `"response": null`. A collector
-   that reads only the first drops every failure — which this one did until the round trip got
-   tests, at which point the queue stopped reporting the useless "missing from batch output" and
-   started recording what the API actually said. If every request fails there is no output file
-   at all, only an error file.
-4. **An enqueued-token limit per usage tier.** Batch caps how many input tokens may be queued at
-   once, and the cap rises with account spend. A 500-résumé batch is far past the lower tiers,
-   so the scheduler splits each send into sub-batches.
-
-**Turnaround is not fast, even when tiny.** A three-request batch stayed `in_progress` for over
-forty minutes in measurement. The window is 24 h and not configurable. This is why the panel says
-"evaluation in progress" and never a time, and why the synchronous "evaluate now" button exists.
-
-## Background processing
-
-Applications are queued for evaluation as soon as extraction produces usable text. The scheduler
-runs two separate jobs (see plan §4.1):
-
-- **Send** at 00:00, 06:00, 12:00 and 18:00, or immediately once 50 applications are waiting.
-- **Collect** hourly, because a batch can finish anywhere inside its 24-hour window.
-
-The queue lives in Postgres and is claimed with `SELECT ... FOR UPDATE SKIP LOCKED`, which is
-what makes two workers safe without a locking protocol — and what keeps Redis and Celery out of
-the deployment.
-
-The **enqueued-token limit is discovered at runtime, not read from a dashboard**. The scheduler
-starts from a working budget, and when the API rejects a send for exceeding the limit it halves
-the budget and retries next tick. That stays correct whatever usage tier the account is on, and
-survives the account changing tier.
-
-A row is retried up to three times. After that it is marked failed and its application moves to
-`error` state — visible in the panel, because a candidate whose evaluation failed still needs to
-be seen rather than silently dropped.
-
-**The worker is off by default.** `WORKER_ENABLED=true` switches it on; anything else leaves it
-stopped. A loop that starts by accident spends real money.
-
-## The HR panel
-
-React + Vite in `web/`. The design world is **The Examiner's Bench** — see `DESIGN.md` for the
-palette laws, the type system and the signature interaction; `PRODUCT.md` holds product truth.
-
-Ranked exhibits on the left, the document under examination on the right.
-
-```bash
-cd web
-npm install
-npm run dev          # proxies /api to localhost:8000
-```
-
-### What it shows, and why in that shape
-
-**Unscored candidates are listed, not hidden.** Extraction is deterministic and runs on upload,
-so the résumé, its text and any tampering flags exist from the moment the application arrives.
-Only the score waits for a batch. The row says "Evaluation in progress" and **never a time** —
-the batch window is 24 h and not configurable.
-
-**The résumé is shown two ways.** The transcript is what the model actually read, with quoted
-passages highlighted; the document register shows the pages **rendered server-side as PNGs**.
-Images, not an embedded PDF: the file came from a stranger and PDF viewers execute scripts.
-
-**Evidence is highlighted from stored offsets, not re-searched.** Verification already located
-each quote against the exact string the panel renders; searching for it again in the browser
-could highlight a different occurrence. A quote that could not be verified is shown struck out
-in red rather than dropped, so the reviewer sees that the model claimed something the résumé
-does not contain.
-
-**Candidate risks and system flags appear in separate boxes.** `risks` are the model's
-observations about the person. `review_flags` are our own verification's objections — an
-unfound quote means *our evaluation* has a problem, not the candidate. Shown together they
-would invite exactly the wrong reading.
-
-**The list collapses.** Reviewing one application is a reading task, and the ranking beside it
-is a distraction once the choice is made. Selecting a candidate always opens their page at the
-top; landing halfway down the previous one is how a reviewer misses the summary.
-
-**A tampered résumé is shown, not suppressed.** Its hidden text appears as evidence with the
-reason and page, and the score beside it is computed from the visible text only.
-
-**Every decision needs a reason and an author**, and both go to `AuditLog` alongside the model's
-score — the disagreement between human and model is the most valuable data the product produces.
-The decision never overwrites the evaluation.
-
-### Sign-in and session behaviour
-
-Every credential failure answers **“Email or password incorrect.”** — the same words for a
-wrong password, a disabled account and an email nobody has. Anything more specific turns the
-form into a way to find out who has an account. The one exception is the lockout, which says
-so: telling a throttled person their password is wrong would have them retry for fifteen
-minutes, and it reveals nothing, since the throttle counts per address as well as per email.
-
-The password field has a visibility toggle, off by default: the eye is crossed out while the
-password is hidden and open once it is readable, so the icon shows the current state rather than
-the action. Hiding what someone types defends against a shoulder, not an attacker, and it causes
-more failed sign-ins than it prevents.
-
-Signing out asks first, and both the control and its confirmation are oxide — the palette's stop
-colour. A review session is long, and losing your place to a misplaced click is worse than one
-extra keystroke.
-
-### Search cannot be injected
-
-Every value reaches Postgres as a bound parameter through SQLAlchemy expressions; the only raw
-SQL in the codebase is `SELECT 1` in the readiness probe, with no input at all. Tests fire
-`' OR 1=1 --` and `'; DROP TABLE applications; --` at the search endpoint and assert the tables
-survive.
-
-Separately, `%` and `_` are escaped before they reach `ILIKE`. Not an injection defence — a
-bound parameter was never injectable — but a search for `%` would otherwise match every
-candidate in the opening, and `a_a` would match “Ada”. The user typed characters, not a pattern.
-
-### Security notes
-
-The original PDF is offered as a download and **never rendered inline**: it was uploaded by a
-stranger and PDF viewers execute JavaScript, so inline rendering on the panel's origin would be
-XSS with an HR session attached. The API forces `Content-Disposition: attachment`, `nosniff` and
-a sandbox CSP. Résumé text is rendered as text, never as markup.
-
-**Authentication is a placeholder and a weak one.** A single shared `X-Admin-Token`, kept in
-`localStorage`: no users, no expiry, no rotation, readable by any script on the page. Acceptable
-for a one-company-per-deployment MVP; **not acceptable before a real client**. Real auth is
-owed before deployment.
-
-## Deployment
-
-```
-api/Dockerfile        python:3.14-slim + tesseract, non-root, migrations on start
-web/Dockerfile        node build → nginx, proxies /api so there is one origin
-docker-compose.yml    db + api + web, api gated on the database being healthy
-railway.toml          builder, health check, restart policy
-.github/workflows/    api: lint, types, migration up/down/up, tests on real Postgres
-                      web: types and build
-                      images: both Dockerfiles must still assemble
-                      commits: conventional messages on pull requests
-```
-
-`alembic upgrade head` runs as part of the container's start command. It is idempotent, so an
-up-to-date database is a no-op, and no deploy needs a manual step.
-
-The image runs as uid 10001, not root: uploaded résumés are untrusted input and PyMuPDF parses
-them in this process.
-
-### Health versus readiness
-
-Two probes, deliberately different:
-
-| Endpoint | Checks | Purpose |
-|---|---|---|
-| `/health` | nothing, always cheap | Liveness. Stays 200 with Postgres down |
-| `/ready` | `SELECT 1` | Readiness. Returns 503 when the database is unreachable |
-
-A liveness probe that queries the database restarts the app whenever the database blips. A
-readiness probe that does not is useless, because the platform keeps routing traffic to an
-instance that can do nothing. Railway is pointed at `/ready`.
-
-### CI
-
-The workflow runs lint, `mypy`, a full `alembic upgrade → downgrade → upgrade` cycle and the
-test suite against a real Postgres service container. `OPENAI_API_KEY` is deliberately empty:
-**no CI job may reach the API**, and every test uses recorded fixtures.
+Every setting is listed and explained in [`.env.example`](.env.example). **`COOKIE_SECURE=false`
+locally** — compose serves plain http, where a Secure cookie is never stored and the panel would
+accept your password and then answer 401 to everything after it.
 
 ## Tests
 
-Tests run against **real Postgres**, not SQLite: native enums, JSONB and the generated
-`tsvector` column do not exist in SQLite, so an in-memory database would let tests pass while
-production fails. They create and drop a throwaway `screening_test` database on each run, so
-`docker compose up -d` must be running first.
-
 ```bash
-cd api
-.venv/bin/pytest
+cd api  && .venv/bin/pytest -q --cov     # 415 tests, coverage floor at 93% branch
+cd web  && npm run e2e                   # 15 browser journeys against the real stack
+cd api  && .venv/bin/mutmut run          # grades the suite; slow, so not in CI
 ```
 
-## Checks
+Four gates, all enforced in CI and all chosen to fail on a regression rather than on noise:
+branch coverage ≥ 93%, cyclomatic complexity ≤ 8, ruff's security rules, and `mypy --strict` over
+all of `app/`. Each was proved to bite by deliberately breaking it.
 
-```bash
-cd api
-.venv/bin/ruff check .
-.venv/bin/ruff format --check .
-.venv/bin/mypy .
-.venv/bin/pytest -q --cov          # tests, plus the coverage floor
-```
+No automated test calls the paid API. Recorded fixtures live in `api/tests/fixtures/`, and
+[their README](api/tests/fixtures/README.md) records where each one came from.
 
-Four gates, all enforced in CI, all chosen so they fail on a real regression rather than on
-noise:
+## What is not proven
 
-| Gate | Where | Why this number |
-|---|---|---|
-| **Coverage ≥ 93%** | `--cov`, `fail_under` in `pyproject.toml` | **Branch** coverage, stricter than line coverage — the same suite reads 96% on lines. A floor set just under where the suite sits, so it catches a drop and not a rounding change |
-| **Complexity ≤ 8** | ruff `C90` | Two functions were over it and were **split**, rather than the gate being set to fit them. The number is arbitrary; holding it is not |
-| **Security rules** | ruff `S` (bandit) | Was available and switched off. Turning it on found eight things, all benign on inspection — which is the argument for it, since a real one had nowhere to hide |
-| **Types** | `mypy --strict`, over all of `app/` | Declared globally rather than per package, after measuring that a per-module `strict` had been applying everywhere anyway while the config claimed otherwise |
+The honest part, and the first thing a reviewer should push on.
 
-The `S` exclusions are per-file and each has a reason in `pyproject.toml`: `assert` is right in a
-measurement script, a test suite is made of asserts, and `TOKEN_BUDGET_KEY` is a dictionary key
-whose name merely ends in `KEY`. The two real ones — the Resend URL and a `NotComparableError`
-guard that used to be an `assert`, and so would have vanished under `python -O` — were fixed
-rather than ignored.
+**No real opening has run.** The answer key the model is measured against was constructed, not
+observed — it shows the system agrees with *a* ranking, not with a hiring manager's. The plan
+records this as a permanent limitation rather than a pending task, because those résumés will not
+be obtained. That risk is cheap: re-running an entire opening costs sixteen cents, so a rubric
+that reads badly can be corrected mid-round.
 
-The `pre-commit` hook runs the first three whenever a Python file under `api/` is staged. It checks
-but never rewrites — an auto-fix would leave changes unstaged and silently outside the commit.
-When it fails, run `.venv/bin/ruff check --fix . && .venv/bin/ruff format .` yourself.
+**One company per deployment.** There is no tenant on `User`, so the panel shows every opening to
+everyone who can sign in. That is correct for one company and a leak for two, so creating a second
+company is refused with an explanation rather than left as an assumption.
 
-## Migrations
-
-```bash
-cd api
-.venv/bin/alembic revision --autogenerate -m "what changed"
-.venv/bin/alembic upgrade head
-.venv/bin/alembic downgrade base    # full teardown, enum types included
-```
-
-Autogenerate does not emit `DROP TYPE` for native enums. If you add one, drop it explicitly in
-the migration's `downgrade()` or the next `upgrade` will fail with "type already exists".
-
-`tests/test_migrations.py` enforces this: it runs the full up → down → up cycle against a
-throwaway database and asserts no enum type survives a downgrade. That test exists because this
-note alone did not stop the defect shipping a second time.
+**Scanned résumés are weaker.** A photographed page has no text layer, so the hidden-text defence
+cannot apply. Those applications are flagged for manual review rather than quietly scored as if
+they had been checked.
 
 ## Layout
 
-| Path | What lives there |
-|---|---|
-| `api/app/core/` | Config and shared dependencies |
-| `api/app/db/` | SQLAlchemy models, session, enums, UUIDv7 keys |
-| `api/app/ingest/` | PDF extraction, sanitization, integrity — **no AI** |
-| `api/app/ai/` | The single OpenAI call, prompts, quote verification |
-| `api/app/workers/` | Queue consumer and batch scheduler |
-| `web/` | React panel and public application form |
+```
+api/            FastAPI · SQLAlchemy 2.0 · Alembic
+  app/ai/       the single AI call, its strict schema, quote verification
+  app/ingest/   PyMuPDF extraction, hidden-text detection, OCR fallback
+  app/services/ scoring, queue, duplicates, sharing, throttling, lifecycle
+  app/workers/  the batch scheduler and its loop
+  tests/        415 tests, including property-based and migration round-trips
+web/            React 19 · Vite · TypeScript strict
+  e2e/          15 Playwright journeys against the real stack
+docs/           the plan, the measurements, the deck, the screenshots
+  ENGINEERING.md   how every part works, and why it works that way
+  PLAN-MVP.md      the design and the scope
+  measurements.md  every API cost measured, retractions included
+  Verbatim.pdf     an 18-page overview to send someone
+```
